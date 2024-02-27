@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 execute = "0.2.13"
+json = "0.12.4"
 websocket = "0.27.0"
 
 [[bin]]
