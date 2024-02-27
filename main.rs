@@ -14,7 +14,7 @@ use websocket::{Message, OwnedMessage};
 use execute::Execute;
 use std::process::Command;
 
-const CONNECTION: &'static str = "ws://127.0.0.1:2794";
+const CONNECTION: &'static str = "ws://192.168.1.155:3000/";
 enum LEDCommand {
     Red,
     Green,
@@ -50,12 +50,16 @@ impl std::fmt::Display for LEDCommand {
 }
 
 fn set_color(arg: LEDCommand) {
+    return;
+
     let mut cmd = Command::new("/usr/local/lb/LEDcolor/bin/setColor");
     cmd.arg(arg.to_string());
     cmd.execute_check_exit_status_code(0).unwrap()
 }
 
 fn get_input() -> u8 {
+    return 5;
+
     let mut cmd = Command::new("/usr/local/lb/ADC/bin/getADC");
     cmd.arg("-1");
     match cmd.execute_output() {
@@ -64,7 +68,10 @@ fn get_input() -> u8 {
     }
 }
 
-fn set_output(value: u8) {
+fn set_output(value: u16) {
+    println!("output cmd: 0x{:04x}", value);
+    return;
+
     let mut cmd = Command::new("/usr/local/lb/DAC/bin/setDAC");
     cmd.arg(format!("0x{:04x}", value));
 }
@@ -153,9 +160,9 @@ fn start() {
                 }
             };
             match message {
-                OwnedMessage::Close(_) => {
+                OwnedMessage::Close(a) => {
                     // Got a close message, so send a close message and return
-                    let _ = tx_1.send(OwnedMessage::Close(None));
+                    let _ = tx_1.send(OwnedMessage::Close(a));
                     return;
                 }
                 OwnedMessage::Ping(data) => {
@@ -169,6 +176,7 @@ fn start() {
                     }
                 }
                 OwnedMessage::Text(data) => {
+                    println!("{}", data);
                     let r = json::parse(&data);
                     if !r.is_ok() {
                         return;
@@ -181,7 +189,7 @@ fn start() {
 					match parsed {
 						json::JsonValue::Object(obj) => {
 							if obj["opcode"] == 0x2 { // OUTPUT
-								let new = obj["data"]["value"].as_u8().expect("bad output packet from server");
+								let new = obj["data"]["value"].as_u16().expect("bad output packet from server");
 								set_output(new);
 							} else if obj["opcode"] == 0x3 {
 								println!("received Hello packet")
@@ -190,7 +198,9 @@ fn start() {
 						_ => {}
 					}
                 }
-                _ => {}
+                _ => {
+                    println!("unknown content")
+                }
             }
         }
     });
@@ -206,7 +216,7 @@ fn start() {
                         value: current_input
                     }
                 })))
-                .is_err();
+                .is_ok();
             if !success {
                 break;
             }
