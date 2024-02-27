@@ -66,7 +66,7 @@ fn get_input() -> u8 {
 
 fn set_output(value: u8) {
     let mut cmd = Command::new("/usr/local/lb/DAC/bin/setDAC");
-    cmd.arg(format!("{:04x}", value));
+    cmd.arg(format!("0x{:04x}", value));
 }
 
 fn main() {
