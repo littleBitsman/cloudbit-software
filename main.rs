@@ -1,20 +1,73 @@
 extern crate websocket;
+extern crate execute;
 
 use std::io::stdin;
+use std::os::unix::process::CommandExt;
 use std::sync::mpsc::channel;
 use std::thread;
 
 use websocket::client::ClientBuilder;
 use websocket::{Message, OwnedMessage};
 
+use std::process::Command;
+use execute::Execute;
+
 const CONNECTION: &'static str = "ws://127.0.0.1:2794";
+
+enum LEDCommand {
+	Red,
+	Green,
+	Blue,
+	Purple,
+	Violet,
+	Teal,
+	Yellow,
+	White,
+	Off,
+	Clownbarf,
+	Blink,
+	Hold
+}
+
+impl std::fmt::Display for LEDCommand {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			LEDCommand::Red => write!(f, "red"),
+			LEDCommand::Green => write!(f, "green"),
+			LEDCommand::Blue => write!(f, "blue"),
+			LEDCommand::Purple => write!(f, "purple"),
+			LEDCommand::Violet => write!(f, "purple"),
+			LEDCommand::Teal => write!(f, "teal"),
+			LEDCommand::Yellow => write!(f, "yellow"),
+			LEDCommand::White => write!(f, "white"),
+			LEDCommand::Off => write!(f, "off"),
+			LEDCommand::Clownbarf => write!(f, "clownbarf"),
+			LEDCommand::Blink => write!(f, "blink"),
+			LEDCommand::Hold => write!(f, "hold")
+		}
+	}
+}
+
+fn set_color(arg: LEDCommand) {
+	let mut cmd = Command::new("/usr/local/lb/LEDcolor/bin/setColor");
+	cmd.arg(arg.to_string());
+	let _ = cmd.execute_check_exit_status_code(0);
+}
+
+fn get_input() -> u8{
+	let mut cmd = Command::new("/usr/local/lb/ADC/bin/getADC");
+	cmd.arg("-1");
+	match cmd.execute_output() {
+		Ok(output) => output.stdout[0],
+		Err(_) => 0
+	}
+}
 
 fn main() {
 	println!("Connecting to {}", CONNECTION);
 
 	let client = ClientBuilder::new(CONNECTION)
 		.unwrap()
-		.add_protocol("rust-websocket")
 		.connect_insecure()
 		.unwrap();
 
@@ -84,7 +137,7 @@ fn main() {
 					}
 				}
 				// Say what we received
-				_ => println!("Receive Loop: {:?}", message),
+				_ => println!("Receive Loop: {:?}", message)
 			}
 		}
 	});

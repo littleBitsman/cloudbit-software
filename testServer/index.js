@@ -10,3 +10,8 @@ server.on('connection', c => {
         console.log(d.toString('utf8'))
     })
 })
+
+process.stdin.on('data', d => {
+    const val = d.toString('utf8').trim()
+    server.clients.forEach(c => c.send(val))
+})
