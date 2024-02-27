@@ -1,8 +1,8 @@
 extern crate websocket;
 extern crate execute;
+extern crate json;
 
 use std::io::stdin;
-use std::os::unix::process::CommandExt;
 use std::sync::mpsc::channel;
 use std::thread;
 
@@ -14,6 +14,7 @@ use execute::Execute;
 
 const CONNECTION: &'static str = "ws://127.0.0.1:2794";
 
+#[allow(dead_code)]
 enum LEDCommand {
 	Red,
 	Green,
@@ -54,7 +55,7 @@ fn set_color(arg: LEDCommand) {
 	let _ = cmd.execute_check_exit_status_code(0);
 }
 
-fn get_input() -> u8{
+fn get_input() -> u8 {
 	let mut cmd = Command::new("/usr/local/lb/ADC/bin/getADC");
 	cmd.arg("-1");
 	match cmd.execute_output() {
