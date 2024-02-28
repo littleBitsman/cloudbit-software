@@ -17,6 +17,7 @@ use std::process::Command;
 
 const CONNECTION: &'static str = "ws://192.168.1.155:3000/";
 
+#[allow(dead_code)]
 enum LEDCommand {
     Red,
     Green,
@@ -69,19 +70,17 @@ fn get_input() -> u8 {
 fn set_output(value: u16) -> bool {
     let mut cmd = Command::new("/usr/local/lb/DAC/bin/setDAC");
     cmd.arg(format!("{:04x}", value));
-	cmd.execute_check_exit_status_code(0).is_ok()
+    cmd.execute_check_exit_status_code(0).is_ok()
 }
 
 fn main() {
-    let MAC_ADDRESS = fs::read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string());
-    let CB_ID = fs::read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
+    let mac_address = fs::read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string());
+    let cb_id = fs::read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
 
     set_color(LEDCommand::Green);
     set_color(LEDCommand::Blink);
     loop {
-        let result = std::panic::catch_unwind(|| {
-            start(&MAC_ADDRESS, &CB_ID)
-        });
+        let result = std::panic::catch_unwind(|| start(&mac_address, &cb_id));
         match result {
             Ok(()) => {}
             Err(_) => {
@@ -182,22 +181,25 @@ fn start(mac_address: &str, cb_id: &str) {
                     if !r.is_ok() {
                         return;
                     }
-					let parsed = r.unwrap();
+                    let parsed = r.unwrap();
                     if !parsed.is_object() {
                         return;
                     }
 
-					match parsed {
-						json::JsonValue::Object(obj) => {
-							if obj["opcode"] == 0x2 { // OUTPUT
-								let new = obj["data"]["value"].as_u16().expect("bad output packet from server");
-								set_output(new);
-							} else if obj["opcode"] == 0x3 {
-								println!("received Hello packet")
-							}
-						},
-						_ => {}
-					}
+                    match parsed {
+                        json::JsonValue::Object(obj) => {
+                            if obj["opcode"] == 0x2 {
+                                // OUTPUT
+                                let new = obj["data"]["value"]
+                                    .as_u16()
+                                    .expect("bad output packet from server");
+                                set_output(new);
+                            } else if obj["opcode"] == 0x3 {
+                                println!("received Hello packet")
+                            }
+                        }
+                        _ => {}
+                    }
                 }
                 _ => {
                     println!("unknown content")
@@ -211,7 +213,7 @@ fn start(mac_address: &str, cb_id: &str) {
         if right_now != current_input {
             current_input = right_now;
             let success = tx
-                .send(OwnedMessage::Text(json::stringify(object!{
+                .send(OwnedMessage::Text(json::stringify(object! {
                     opcode: 0x1,
                     data: object! {
                         value: current_input
