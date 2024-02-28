@@ -3,6 +3,7 @@ extern crate json;
 extern crate websocket;
 
 use core::time;
+use std::fs;
 use std::sync::mpsc::channel;
 use std::thread::{self, sleep};
 
@@ -15,6 +16,7 @@ use execute::Execute;
 use std::process::Command;
 
 const CONNECTION: &'static str = "ws://192.168.1.155:3000/";
+
 enum LEDCommand {
     Red,
     Green,
@@ -49,17 +51,13 @@ impl std::fmt::Display for LEDCommand {
     }
 }
 
-fn set_color(arg: LEDCommand) {
-    return;
-
+fn set_color(arg: LEDCommand) -> bool {
     let mut cmd = Command::new("/usr/local/lb/LEDcolor/bin/setColor");
     cmd.arg(arg.to_string());
-    cmd.execute_check_exit_status_code(0).unwrap()
+    cmd.execute_check_exit_status_code(0).is_ok()
 }
 
 fn get_input() -> u8 {
-    return 5;
-
     let mut cmd = Command::new("/usr/local/lb/ADC/bin/getADC");
     cmd.arg("-1");
     match cmd.execute_output() {
@@ -68,20 +66,23 @@ fn get_input() -> u8 {
     }
 }
 
-fn set_output(value: u16) {
-    println!("output cmd: 0x{:04x}", value);
-    return;
-
+fn set_output(value: u16) -> bool {
     let mut cmd = Command::new("/usr/local/lb/DAC/bin/setDAC");
-    cmd.arg(format!("0x{:04x}", value));
+    cmd.arg(format!("{:04x}", value));
+	cmd.execute_check_exit_status_code(0).is_ok()
 }
 
 fn main() {
+    let MAC_ADDRESS = fs::read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string());
+    let CB_ID = fs::read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
+
     set_color(LEDCommand::Green);
     set_color(LEDCommand::Blink);
     loop {
-        let t = thread::spawn(start);
-        match t.join() {
+        let result = std::panic::catch_unwind(|| {
+            start(&MAC_ADDRESS, &CB_ID)
+        });
+        match result {
             Ok(()) => {}
             Err(_) => {
                 set_color(LEDCommand::Red);
@@ -93,12 +94,12 @@ fn main() {
     }
 }
 
-fn start() {
+fn start(mac_address: &str, cb_id: &str) {
     println!("Connecting to {}", CONNECTION);
-
     let mut headers = Headers::new();
-    headers.append_raw("MAC-Address", "test".into());
+    headers.append_raw("MAC-Address", mac_address.into());
     headers.append_raw("User-Agent", "littleARCH cloudBit".into());
+    headers.append_raw("CB-Id", cb_id.into());
 
     let client = ClientBuilder::new(CONNECTION)
         .unwrap()
