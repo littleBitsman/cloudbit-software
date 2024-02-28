@@ -1,21 +1,23 @@
 extern crate execute;
 extern crate json;
-extern crate websocket;
 
-use core::time;
-use std::fs;
-use std::sync::mpsc::channel;
-use std::thread::{self, sleep};
+use json::{object, JsonValue};
 
-use json::object;
-use websocket::client::ClientBuilder;
-use websocket::header::Headers;
-use websocket::{Message, OwnedMessage};
+use std::{
+    fs,
+    process::Command,
+    str::from_utf8,
+    thread::{self, sleep},
+    time,
+};
 
-use execute::Execute;
-use std::process::Command;
+use crate::execute::Execute;
 
-const CONNECTION: &'static str = "ws://192.168.1.155:3000/";
+use std::net::UdpSocket;
+
+const LOCAL_ADDR: &'static str = "127.0.0.1:3002";
+// const REMOTE_ADDR: &'static str = "192.168.1.155:3000";
+const REMOTE_ADDR: &'static str = "127.0.0.1:3000";
 
 #[allow(dead_code)]
 enum LEDCommand {
@@ -52,7 +54,7 @@ impl std::fmt::Display for LEDCommand {
     }
 }
 
-fn set_color(arg: LEDCommand) -> bool {
+fn set_led(arg: LEDCommand) -> bool {
     let mut cmd = Command::new("/usr/local/lb/LEDcolor/bin/setColor");
     cmd.arg(arg.to_string());
     cmd.execute_check_exit_status_code(0).is_ok()
@@ -73,163 +75,80 @@ fn set_output(value: u16) -> bool {
     cmd.execute_check_exit_status_code(0).is_ok()
 }
 
+fn start(mac_address: &str, cb_id: &str) {
+    let socket = UdpSocket::bind(LOCAL_ADDR).expect("Failed to bind");
+    socket.connect(REMOTE_ADDR).expect("Failed to connect");
+    socket
+        .send(
+            json::stringify(object! {
+                opcode: 0x3,
+                mac: mac_address,
+                id: cb_id
+            })
+            .as_bytes(),
+        )
+        .expect("Failed to identify");
+
+    let clone = socket.try_clone().unwrap();
+
+    thread::spawn(move || loop {
+        let mut buf = [0; 1000];
+        let amount = clone.recv(&mut buf).unwrap();
+        let data = json::parse(from_utf8(&mut buf[..amount]).unwrap()).unwrap();
+
+        match data {
+            JsonValue::Object(obj) => {
+                let opcode = obj["opcode"].as_u8().unwrap_or(0);
+                if opcode == 0x2 {
+                    let new = obj["data"]["value"]
+                        .as_u16()
+                        .expect("bad output packet from server");
+                    set_output(new);
+                    println!("new output {}", new);
+                } else if opcode == 0x4 {
+                    println!("received hello packet from server")
+                }
+            }
+            _ => {
+                println!("received invalid data, ignoring")
+            }
+        }
+    });
+
+    let mut current = 0;
+
+    loop {
+        if get_input() != current {
+            current = get_input();
+            socket
+                .send(
+                    json::stringify(object! {
+                        opcode: 0x1
+                    })
+                    .as_bytes(),
+                )
+                .expect("[input] failed to send updated input");
+        }
+    }
+}
+
 fn main() {
     let mac_address = fs::read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string());
     let cb_id = fs::read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
 
-    set_color(LEDCommand::Green);
-    set_color(LEDCommand::Blink);
+    set_led(LEDCommand::Green);
+    set_led(LEDCommand::Blink);
     loop {
         let result = std::panic::catch_unwind(|| start(&mac_address, &cb_id));
         match result {
             Ok(()) => {}
             Err(_) => {
-                set_color(LEDCommand::Red);
-                set_color(LEDCommand::Blink);
+                set_led(LEDCommand::Red);
+                set_led(LEDCommand::Blink);
                 sleep(time::Duration::from_secs(2));
-                set_color(LEDCommand::Green);
-            }
-        }
-    }
-}
-
-fn start(mac_address: &str, cb_id: &str) {
-    println!("Connecting to {}", CONNECTION);
-    let mut headers = Headers::new();
-    headers.append_raw("MAC-Address", mac_address.into());
-    headers.append_raw("User-Agent", "littleARCH cloudBit".into());
-    headers.append_raw("CB-Id", cb_id.into());
-
-    let client = ClientBuilder::new(CONNECTION)
-        .unwrap()
-        .custom_headers(&headers)
-        .connect_insecure()
-        .unwrap();
-
-    println!("Successfully connected");
-
-    set_color(LEDCommand::Hold);
-
-    let mut current_input: u8 = 0;
-
-    let (mut receiver, mut sender) = client.split().unwrap();
-
-    let (tx, rx) = channel();
-
-    let tx_1 = tx.clone();
-
-    let send_loop = thread::spawn(move || {
-        loop {
-            // Send loop
-            let message = match rx.recv() {
-                Ok(m) => m,
-                Err(e) => {
-                    println!("Send Loop: {:?}", e);
-                    return;
-                }
-            };
-            match message {
-                OwnedMessage::Close(_) => {
-                    let _ = sender.send_message(&message);
-                    // If it's a close message, just send it and then return.
-                    return;
-                }
-                _ => (),
-            }
-            // Send the message
-            match sender.send_message(&message) {
-                Ok(()) => (),
-                Err(e) => {
-                    println!("Send Loop: {:?}", e);
-                    let _ = sender.send_message(&Message::close());
-                    return;
-                }
-            }
-        }
-    });
-
-    let receive_loop = thread::spawn(move || {
-        // Receive loop
-        for message in receiver.incoming_messages() {
-            let message = match message {
-                Ok(m) => m,
-                Err(e) => {
-                    println!("Receive Loop: {:?}", e);
-                    let _ = tx_1.send(OwnedMessage::Close(None));
-                    return;
-                }
-            };
-            match message {
-                OwnedMessage::Close(a) => {
-                    // Got a close message, so send a close message and return
-                    let _ = tx_1.send(OwnedMessage::Close(a));
-                    return;
-                }
-                OwnedMessage::Ping(data) => {
-                    match tx_1.send(OwnedMessage::Pong(data)) {
-                        // Send a pong in response
-                        Ok(()) => (),
-                        Err(e) => {
-                            println!("Receive Loop: {:?}", e);
-                            return;
-                        }
-                    }
-                }
-                OwnedMessage::Text(data) => {
-                    println!("{}", data);
-                    let r = json::parse(&data);
-                    if !r.is_ok() {
-                        return;
-                    }
-                    let parsed = r.unwrap();
-                    if !parsed.is_object() {
-                        return;
-                    }
-
-                    match parsed {
-                        json::JsonValue::Object(obj) => {
-                            if obj["opcode"] == 0x2 {
-                                // OUTPUT
-                                let new = obj["data"]["value"]
-                                    .as_u16()
-                                    .expect("bad output packet from server");
-                                set_output(new);
-                            } else if obj["opcode"] == 0x3 {
-                                println!("received Hello packet")
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                _ => {
-                    println!("unknown content")
-                }
-            }
-        }
-    });
-
-    loop {
-        let right_now = get_input();
-        if right_now != current_input {
-            current_input = right_now;
-            let success = tx
-                .send(OwnedMessage::Text(json::stringify(object! {
-                    opcode: 0x1,
-                    data: object! {
-                        value: current_input
-                    }
-                })))
-                .is_ok();
-            if !success {
+                set_led(LEDCommand::Green);
                 break;
             }
         }
     }
-
-    println!("connection closed");
-
-    let _ = send_loop.join();
-    let _ = receive_loop.join();
-
-    println!("Exiting")
 }

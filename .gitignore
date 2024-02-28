@@ -1,5 +1,4 @@
 target
-testServer
-testServer/*
+testServer/node_modules
 .vscode
 .vscode/*
