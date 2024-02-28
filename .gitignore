@@ -1,3 +1,5 @@
 target
 testServer
 testServer/*
+.vscode
+.vscode/*
