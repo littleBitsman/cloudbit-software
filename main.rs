@@ -1,7 +1,7 @@
 extern crate execute;
 extern crate json;
 
-use json::{object, JsonValue};
+use json::object;
 
 use std::{
     fs,
@@ -15,8 +15,9 @@ use crate::execute::Execute;
 
 use std::net::UdpSocket;
 
-const LOCAL_ADDR: &'static str = "127.0.0.1:3000";
-const REMOTE_ADDR: &'static str = "192.168.1.155:3000";
+const LOCAL_ADDR: &'static str = "127.0.0.1:3001";
+// const REMOTE_ADDR: &'static str = "192.168.1.155:3000";
+const REMOTE_ADDR: &'static str = "127.0.0.1:3000";
 
 #[allow(dead_code)]
 enum LEDCommand {
@@ -75,6 +76,8 @@ fn set_output(value: u16) -> bool {
 }
 
 fn start(mac_address: &str, cb_id: &str) {
+    let mac_bytes = mac_address.replace(":", "").as_bytes().to_owned();
+
     let socket = UdpSocket::bind(LOCAL_ADDR).expect("Failed to bind");
     socket.connect(REMOTE_ADDR).expect("Failed to connect");
     socket
@@ -92,25 +95,17 @@ fn start(mac_address: &str, cb_id: &str) {
 
     thread::spawn(move || loop {
         let mut buf = [0; 1000];
-        let amount = clone.recv(&mut buf).unwrap();
-        let data = json::parse(from_utf8(&mut buf[..amount]).unwrap()).unwrap();
+        clone.recv(&mut buf).unwrap();
+        let (mac_buf, main_buf) = buf.split_at_mut(12);
+        if mac_bytes != mac_buf {
+            return println!("received msg intended for another cloudbit. expected: {:?}, got: {:?}", from_utf8(&mac_bytes), from_utf8(&mac_buf))
+        }
+        let main = from_utf8(main_buf).unwrap();
+        println!("{}", main);
 
-        match data {
-            JsonValue::Object(obj) => {
-                let opcode = obj["opcode"].as_u8().unwrap_or(0);
-                if opcode == 0x2 {
-                    let new = obj["data"]["value"]
-                        .as_u16()
-                        .expect("bad output packet from server");
-                    set_output(new);
-                    println!("new output {}", new);
-                } else if opcode == 0x4 {
-                    println!("received hello packet from server")
-                }
-            }
-            _ => {
-                println!("received invalid data, ignoring")
-            }
+        if main.starts_with("output") {
+            let num = u16::from_str_radix(main.split(":").last().unwrap_or("0"), 10).unwrap_or(0);
+            set_output(num);
         }
     });
 
@@ -132,7 +127,7 @@ fn start(mac_address: &str, cb_id: &str) {
 }
 
 fn main() {
-    let mac_address = fs::read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string());
+    let mac_address = fs::read_to_string("/var/lb/mac").unwrap_or("00:00:00:00:00:00".to_string());
     let cb_id = fs::read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
 
     set_led(LEDCommand::Green);
