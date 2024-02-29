@@ -74,15 +74,13 @@ fn set_output(value: u16) -> bool {
 }
 
 fn main() {
-    let mac_address = &fs::read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string());
-    let cb_id = &fs::read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
+    let mac_address = fs::read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string());
+    let cb_id = fs::read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
 
     set_color(LEDCommand::Green);
     set_color(LEDCommand::Blink);
     loop {
-        let result = catch_unwind(|| {
-            start(mac_address.clone(), cb_id.clone())
-        });
+        let result = catch_unwind(|| start(mac_address.clone(), cb_id.clone()));
         match result {
             Ok(_) => {}
             Err(_) => {
