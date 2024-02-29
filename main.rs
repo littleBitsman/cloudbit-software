@@ -1,12 +1,10 @@
 extern crate execute;
 extern crate json;
 
-use json::object;
-
 use std::{
     fs,
+    panic::catch_unwind,
     process::Command,
-    str::from_utf8,
     thread::{self, sleep},
     time,
 };
@@ -75,38 +73,46 @@ fn set_output(value: u16) -> bool {
     cmd.execute_check_exit_status_code(0).is_ok()
 }
 
-fn start(mac_address: &str, cb_id: &str) {
+fn start(mac_address: &str) {
     let mac_bytes = mac_address.replace(":", "").as_bytes().to_owned();
+    let mac_bytes_2 = mac_bytes.clone();
 
     let socket = UdpSocket::bind(LOCAL_ADDR).expect("Failed to bind");
     socket.connect(REMOTE_ADDR).expect("Failed to connect");
     socket
-        .send(
-            json::stringify(object! {
-                opcode: 0x3,
-                mac: mac_address,
-                id: cb_id
-            })
-            .as_bytes(),
-        )
-        .expect("Failed to identify");
+        .send(format!("{}identify", String::from_utf8_lossy(&mac_bytes)).as_bytes())
+        .expect("[identify] failed to send identify packet");
 
     let clone = socket.try_clone().unwrap();
 
     thread::spawn(move || loop {
-        let mut buf = [0; 1000];
-        clone.recv(&mut buf).unwrap();
-        let (mac_buf, main_buf) = buf.split_at_mut(12);
-        if mac_bytes != mac_buf {
-            return println!("received msg intended for another cloudbit. expected: {:?}, got: {:?}", from_utf8(&mac_bytes), from_utf8(&mac_buf))
-        }
-        let main = from_utf8(main_buf).unwrap();
-        println!("{}", main);
+        let _ = catch_unwind(|| {
+            let mut buf = [0; 1000];
+            let amount = clone.recv(&mut buf).unwrap();
+            let (mac_buf, mut main_buf) = buf.split_at_mut(12);
+            main_buf = &mut main_buf[..(amount - 12)];
+            if mac_bytes != mac_buf {
+                return println!(
+                    "received msg intended for another cloudbit. expected: {:?}, got: {:?}",
+                    String::from_utf8_lossy(&mac_bytes),
+                    String::from_utf8_lossy(&mac_buf)
+                );
+            }
+            let main = String::from_utf8_lossy(main_buf);
 
-        if main.starts_with("output") {
-            let num = u16::from_str_radix(main.split(":").last().unwrap_or("0"), 10).unwrap_or(0);
-            set_output(num);
-        }
+            let input: Vec<&str> = main.split(":").collect();
+            let cmd = input[0];
+            let (_, args) = input.split_at(1);
+
+            match cmd {
+                "output" => {
+                    let num = u16::from_str_radix(args[0], 10).unwrap();
+                    set_output(num);
+                    println!("received output packet: {}", num);
+                }
+                _ => {}
+            }
+        });
     });
 
     let mut current = 0;
@@ -115,12 +121,7 @@ fn start(mac_address: &str, cb_id: &str) {
         if get_input() != current {
             current = get_input();
             socket
-                .send(
-                    json::stringify(object! {
-                        opcode: 0x1
-                    })
-                    .as_bytes(),
-                )
+                .send(format!("{:?}input:{}", mac_bytes_2, current).as_bytes())
                 .expect("[input] failed to send updated input");
         }
     }
@@ -128,15 +129,15 @@ fn start(mac_address: &str, cb_id: &str) {
 
 fn main() {
     let mac_address = fs::read_to_string("/var/lb/mac").unwrap_or("00:00:00:00:00:00".to_string());
-    let cb_id = fs::read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
 
     set_led(LEDCommand::Green);
     set_led(LEDCommand::Blink);
     loop {
-        let result = std::panic::catch_unwind(|| start(&mac_address, &cb_id));
+        let result = std::panic::catch_unwind(|| start(&mac_address));
         match result {
             Ok(()) => {}
             Err(_) => {
+                println!("error occured; attempting to restart");
                 set_led(LEDCommand::Red);
                 set_led(LEDCommand::Blink);
                 sleep(time::Duration::from_secs(2));
