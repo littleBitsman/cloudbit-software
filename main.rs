@@ -1,16 +1,16 @@
 extern crate execute;
 extern crate json;
-extern crate websocket;
+extern crate tungstenite;
 
 use core::time;
 use std::fs;
-use std::sync::mpsc::channel;
+use std::panic::catch_unwind;
+use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};
 
 use json::object;
-use websocket::client::ClientBuilder;
-use websocket::header::Headers;
-use websocket::{Message, OwnedMessage};
+use tungstenite::connect;
+use tungstenite::Message;
 
 use execute::Execute;
 use std::process::Command;
@@ -74,15 +74,17 @@ fn set_output(value: u16) -> bool {
 }
 
 fn main() {
-    let mac_address = fs::read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string());
-    let cb_id = fs::read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
+    let mac_address = &fs::read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string());
+    let cb_id = &fs::read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
 
     set_color(LEDCommand::Green);
     set_color(LEDCommand::Blink);
     loop {
-        let result = std::panic::catch_unwind(|| start(&mac_address, &cb_id));
+        let result = catch_unwind(|| {
+            start(mac_address.clone(), cb_id.clone())
+        });
         match result {
-            Ok(()) => {}
+            Ok(_) => {}
             Err(_) => {
                 set_color(LEDCommand::Red);
                 set_color(LEDCommand::Blink);
@@ -93,127 +95,96 @@ fn main() {
     }
 }
 
-fn start(mac_address: &str, cb_id: &str) {
-    println!("Connecting to {}", CONNECTION);
-    let mut headers = Headers::new();
-    headers.append_raw("MAC-Address", mac_address.into());
-    headers.append_raw("User-Agent", "littleARCH cloudBit".into());
-    headers.append_raw("CB-Id", cb_id.into());
-
-    let client = ClientBuilder::new(CONNECTION)
-        .unwrap()
-        .custom_headers(&headers)
-        .connect_insecure()
-        .unwrap();
-
-    println!("Successfully connected");
+fn start(mac_address: String, cb_id: String) {
+    println!("Attempting to connect to {}", CONNECTION);
 
     set_color(LEDCommand::Hold);
 
     let mut current_input: u8 = 0;
 
-    let (mut receiver, mut sender) = client.split().unwrap();
+    let request = tungstenite::handshake::client::Request::get(CONNECTION)
+        .header("MAC-Address", mac_address)
+        .header("CB-Id", cb_id)
+        .header("User-Agent", "littleARCH cloudBit")
+        .body(())
+        .unwrap();
 
-    let (tx, rx) = channel();
+    let (client, _) = connect(request).unwrap();
+    let client = Arc::new(Mutex::new(client));
 
-    let tx_1 = tx.clone();
+    println!("Successfully connected");
 
-    let send_loop = thread::spawn(move || {
-        loop {
-            // Send loop
-            let message = match rx.recv() {
-                Ok(m) => m,
-                Err(e) => {
-                    println!("Send Loop: {:?}", e);
-                    return;
-                }
-            };
-            match message {
-                OwnedMessage::Close(_) => {
-                    let _ = sender.send_message(&message);
-                    // If it's a close message, just send it and then return.
-                    return;
-                }
-                _ => (),
-            }
-            // Send the message
-            match sender.send_message(&message) {
-                Ok(()) => (),
-                Err(e) => {
-                    println!("Send Loop: {:?}", e);
-                    let _ = sender.send_message(&Message::close());
-                    return;
-                }
-            }
-        }
-    });
-
-    let receive_loop = thread::spawn(move || {
-        // Receive loop
-        for message in receiver.incoming_messages() {
-            let message = match message {
-                Ok(m) => m,
-                Err(e) => {
-                    println!("Receive Loop: {:?}", e);
-                    let _ = tx_1.send(OwnedMessage::Close(None));
-                    return;
-                }
-            };
-            match message {
-                OwnedMessage::Close(a) => {
-                    // Got a close message, so send a close message and return
-                    let _ = tx_1.send(OwnedMessage::Close(a));
-                    return;
-                }
-                OwnedMessage::Ping(data) => {
-                    match tx_1.send(OwnedMessage::Pong(data)) {
-                        // Send a pong in response
-                        Ok(()) => (),
-                        Err(e) => {
-                            println!("Receive Loop: {:?}", e);
-                            return;
-                        }
-                    }
-                }
-                OwnedMessage::Text(data) => {
-                    println!("{}", data);
-                    let r = json::parse(&data);
-                    if !r.is_ok() {
+    let receive_loop = {
+        let client = Arc::clone(&client);
+        thread::spawn(move || {
+            // Receive loop
+            loop {
+                let mut client = client.lock().unwrap();
+                let message = match client.read() {
+                    Ok(m) => m,
+                    Err(e) => {
+                        println!("Receive Loop: {:?}", e);
+                        let _ = client.send(Message::Close(None));
                         return;
                     }
-                    let parsed = r.unwrap();
-                    if !parsed.is_object() {
+                };
+                match message {
+                    Message::Close(a) => {
+                        // Got a close message, so send a close message and return
+                        let _ = client.send(Message::Close(a));
                         return;
                     }
-
-                    match parsed {
-                        json::JsonValue::Object(obj) => {
-                            if obj["opcode"] == 0x2 {
-                                // OUTPUT
-                                let new = obj["data"]["value"]
-                                    .as_u16()
-                                    .expect("bad output packet from server");
-                                set_output(new);
-                            } else if obj["opcode"] == 0x3 {
-                                println!("received Hello packet")
+                    Message::Ping(data) => {
+                        match client.send(Message::Pong(data)) {
+                            // Send a pong in response
+                            Ok(()) => (),
+                            Err(e) => {
+                                println!("Receive Loop: {:?}", e);
+                                return;
                             }
                         }
-                        _ => {}
+                    }
+                    Message::Text(data) => {
+                        println!("{}", data);
+                        let r = json::parse(&data);
+                        if !r.is_ok() {
+                            return;
+                        }
+                        let parsed = r.unwrap();
+                        if !parsed.is_object() {
+                            return;
+                        }
+
+                        match parsed {
+                            json::JsonValue::Object(obj) => {
+                                if obj["opcode"] == 0x2 {
+                                    // OUTPUT
+                                    let new = obj["data"]["value"]
+                                        .as_u16()
+                                        .expect("bad output packet from server");
+                                    set_output(new);
+                                } else if obj["opcode"] == 0x3 {
+                                    println!("received Hello packet")
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    _ => {
+                        println!("unknown content")
                     }
                 }
-                _ => {
-                    println!("unknown content")
-                }
             }
-        }
-    });
+        })
+    };
 
     loop {
         let right_now = get_input();
         if right_now != current_input {
             current_input = right_now;
-            let success = tx
-                .send(OwnedMessage::Text(json::stringify(object! {
+            let mut client = client.lock().unwrap();
+            let success = client
+                .send(Message::Text(json::stringify(object! {
                     opcode: 0x1,
                     data: object! {
                         value: current_input
@@ -228,8 +199,7 @@ fn start(mac_address: &str, cb_id: &str) {
 
     println!("connection closed");
 
-    let _ = send_loop.join();
-    let _ = receive_loop.join();
+    receive_loop.join().unwrap_or_default();
 
     println!("Exiting")
 }
