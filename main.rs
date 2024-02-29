@@ -15,9 +15,8 @@ use crate::execute::Execute;
 
 use std::net::UdpSocket;
 
-const LOCAL_ADDR: &'static str = "127.0.0.1:3002";
-// const REMOTE_ADDR: &'static str = "192.168.1.155:3000";
-const REMOTE_ADDR: &'static str = "127.0.0.1:3000";
+const LOCAL_ADDR: &'static str = "127.0.0.1:3000";
+const REMOTE_ADDR: &'static str = "192.168.1.155:3000";
 
 #[allow(dead_code)]
 enum LEDCommand {
