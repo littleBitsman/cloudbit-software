@@ -1,5 +1,5 @@
 [package]
-name = "cloudbit-software"
+name = "cloudbit_software"
 version = "1.0.0"
 edition = "2021"
 
@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 execute = "0.2.13"
 json = "0.12.4"
+openssl = { version = "0.10.64", features = ["vendored"] }
 tungstenite = { version = "0.21.0", features = ["native-tls", "rustls"] }
 
 [[bin]]

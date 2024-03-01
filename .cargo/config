@@ -1,0 +1,5 @@
+[build]
+target = "armv5te-unknown-linux-gnueabi"
+
+[target.armv5te-unknown-linux-gnueabi]
+linker = "arm-linux-gnueabi-gcc"
