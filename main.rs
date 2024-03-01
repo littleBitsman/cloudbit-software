@@ -3,17 +3,18 @@ extern crate json;
 extern crate tungstenite;
 
 use core::time;
+use execute::Execute;
+use json::object;
 use std::fs;
 use std::panic::catch_unwind;
+use std::process::Command;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};
-
-use json::object;
 use tungstenite::connect;
+use tungstenite::handshake::client::generate_key;
+use tungstenite::http::Uri;
 use tungstenite::Message;
-
-use execute::Execute;
-use std::process::Command;
 
 const CONNECTION: &'static str = "ws://192.168.1.155:3000/";
 
@@ -83,7 +84,8 @@ fn main() {
         let result = catch_unwind(|| start(mac_address.clone(), cb_id.clone()));
         match result {
             Ok(_) => {}
-            Err(_) => {
+            Err(err) => {
+                println!("error {:?}", err);
                 set_color(LEDCommand::Red);
                 set_color(LEDCommand::Blink);
                 sleep(time::Duration::from_secs(2));
@@ -94,21 +96,27 @@ fn main() {
 }
 
 fn start(mac_address: String, cb_id: String) {
+    let url = Uri::from_str(CONNECTION).unwrap();
+
     println!("Attempting to connect to {}", CONNECTION);
 
     set_color(LEDCommand::Hold);
 
     let mut current_input: u8 = 0;
-
-    let request = tungstenite::handshake::client::Request::get(CONNECTION)
+    let request = tungstenite::handshake::client::Request::get(&url)
         .header("MAC-Address", mac_address)
         .header("CB-Id", cb_id)
         .header("User-Agent", "littleARCH cloudBit")
+        .header("Host", url.host().unwrap())
+        .header("Upgrade", "websocket")
+        .header("Connection", "upgrade")
+        .header("Sec-Websocket-Version", 13)
+        .header("Sec-Websocket-Key", generate_key())
         .body(())
         .unwrap();
 
-    let (client, _) = connect(request).unwrap();
-    let client = Arc::new(Mutex::new(client));
+    let (client_raw, _) = connect(request).unwrap();
+    let client = Arc::new(Mutex::new(client_raw));
 
     println!("Successfully connected");
 
@@ -130,7 +138,6 @@ fn start(mac_address: String, cb_id: String) {
                     Message::Close(a) => {
                         // Got a close message, so send a close message and return
                         let _ = client.send(Message::Close(a));
-                        return;
                     }
                     Message::Ping(data) => {
                         match client.send(Message::Pong(data)) {
@@ -152,7 +159,6 @@ fn start(mac_address: String, cb_id: String) {
                         if !parsed.is_object() {
                             return;
                         }
-
                         match parsed {
                             json::JsonValue::Object(obj) => {
                                 if obj["opcode"] == 0x2 {
@@ -162,7 +168,7 @@ fn start(mac_address: String, cb_id: String) {
                                         .expect("bad output packet from server");
                                     set_output(new);
                                 } else if obj["opcode"] == 0x3 {
-                                    println!("received Hello packet")
+                                    println!("received hello packet")
                                 }
                             }
                             _ => {}
@@ -195,9 +201,9 @@ fn start(mac_address: String, cb_id: String) {
         }
     }
 
+    client.lock().unwrap().send(Message::Close(None)).unwrap();
+
     println!("connection closed");
 
     receive_loop.join().unwrap_or_default();
-
-    println!("Exiting")
 }
