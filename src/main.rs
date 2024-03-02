@@ -117,7 +117,11 @@ fn main() {
 fn start(conf: CloudClientConfig) {
     let url = Url::from_str(&conf.cloud_url).unwrap();
 
-    println!("Attempting to connect to {} ({})", url.to_string(), url.host_str().unwrap());
+    println!(
+        "Attempting to connect to {} ({})",
+        url.to_string(),
+        url.host_str().unwrap()
+    );
 
     set_led(LEDCommand::Hold);
 
@@ -191,8 +195,15 @@ fn start(conf: CloudClientConfig) {
                                         set_output(new);
                                     }
                                     0x3 => println!("received hello packet"),
-                                    0xF0 => { // SET LED
-                                        set_led_raw(obj["color"].as_str().expect("[dev] bad set led packet").to_lowercase().to_string());
+                                    0xF0 => {
+                                        // SET LED
+                                        set_led_raw(
+                                            obj["color"]
+                                                .as_str()
+                                                .expect("[dev] bad set led packet")
+                                                .to_lowercase()
+                                                .to_string(),
+                                        );
                                     }
                                     _ => {}
                                 }
