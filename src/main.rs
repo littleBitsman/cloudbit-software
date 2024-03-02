@@ -1,6 +1,7 @@
 extern crate execute;
 extern crate json;
 extern crate tungstenite;
+extern crate url;
 
 mod conf;
 
@@ -16,8 +17,8 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};
 use tungstenite::connect;
 use tungstenite::handshake::client::generate_key;
-use tungstenite::http::Uri;
 use tungstenite::Message;
+use url::Url;
 
 #[allow(dead_code)]
 enum LEDCommand {
@@ -89,7 +90,7 @@ fn set_output(value: u16) -> bool {
 fn main() {
     let opts =
         cloud_config::parse("/usr/local/lb/etc/cloud_client.conf").unwrap_or(CloudClientConfig {
-            cloud_url: "ws://super-duper-robot-q6p95vjrr7xh47xr-3000.app.github.dev".to_string(),
+            cloud_url: "ws://127.0.0.1:3000".to_string(),
             mac_address: read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string()),
             cb_id: read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string()),
         });
@@ -114,18 +115,18 @@ fn main() {
 // MAIN SOCKET
 
 fn start(conf: CloudClientConfig) {
-    let url = Uri::from_str(&conf.cloud_url).unwrap();
+    let url = Url::from_str(&conf.cloud_url).unwrap();
 
-    println!("Attempting to connect to {}", url.to_string());
+    println!("Attempting to connect to {} ({})", url.to_string(), url.host_str().unwrap());
 
     set_led(LEDCommand::Hold);
 
     let mut current_input: u8 = 0;
-    let request = tungstenite::handshake::client::Request::get(&url)
+    let request = tungstenite::handshake::client::Request::get(&conf.cloud_url)
         .header("MAC-Address", conf.mac_address)
         .header("CB-Id", conf.cb_id)
         .header("User-Agent", "littleARCH cloudBit")
-        .header("Host", url.host().unwrap())
+        .header("Host", url.host_str().unwrap())
         .header("Upgrade", "websocket")
         .header("Connection", "upgrade")
         .header("Sec-Websocket-Version", 13)
