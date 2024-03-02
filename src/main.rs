@@ -100,7 +100,7 @@ fn main() {
     loop {
         let result = catch_unwind(|| start(opts.clone()));
         match result {
-            Ok(()) => {}
+            Ok(()) => println!("you closed the connection somehow why??"),
             Err(err) => {
                 println!("error {:?}", err);
                 set_led(LEDCommand::Red);
