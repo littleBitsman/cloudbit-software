@@ -19,8 +19,6 @@ use tungstenite::handshake::client::generate_key;
 use tungstenite::http::Uri;
 use tungstenite::Message;
 
-const CONNECTION: &'static str = "ws://192.168.1.155:3000/";
-
 #[allow(dead_code)]
 enum LEDCommand {
     Red,
@@ -91,7 +89,7 @@ fn set_output(value: u16) -> bool {
 fn main() {
     let opts =
         cloud_config::parse("/usr/local/lb/etc/cloud_client.conf").unwrap_or(CloudClientConfig {
-            cloud_url: "ws://192.168.1.155:3000".to_string(),
+            cloud_url: "ws://super-duper-robot-q6p95vjrr7xh47xr-3000.app.github.dev".to_string(),
             mac_address: read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string()),
             cb_id: read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string()),
         });
@@ -118,7 +116,7 @@ fn main() {
 fn start(conf: CloudClientConfig) {
     let url = Uri::from_str(&conf.cloud_url).unwrap();
 
-    println!("Attempting to connect to {}", CONNECTION);
+    println!("Attempting to connect to {}", url.to_string());
 
     set_led(LEDCommand::Hold);
 
