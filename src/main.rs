@@ -95,7 +95,7 @@ fn main() {
             cb_id: read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string()),
         });
 
-    set_led(LEDCommand::Green);
+    set_led(LEDCommand::Teal);
     set_led(LEDCommand::Blink);
     loop {
         let result = catch_unwind(|| start(opts.clone()));
@@ -106,7 +106,7 @@ fn main() {
                 set_led(LEDCommand::Red);
                 set_led(LEDCommand::Blink);
                 sleep(time::Duration::from_secs(2));
-                set_led(LEDCommand::Green);
+                set_led(LEDCommand::Teal);
             }
         }
     }
@@ -142,6 +142,8 @@ fn start(conf: CloudClientConfig) {
     let client = Arc::new(Mutex::new(client_raw));
 
     println!("Successfully connected");
+
+    set_led(LEDCommand::Green);
 
     let receive_loop = {
         let client = Arc::clone(&client);
