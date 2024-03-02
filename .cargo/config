@@ -1,2 +1,2 @@
-[target.armv5te-unknown-linux-gnueabi]
-linker = "arm-linux-gnueabi-gcc"
+# [target.armv5te-unknown-linux-gnueabi]
+# linker = "arm-linux-gnueabi-gcc"
