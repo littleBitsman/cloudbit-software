@@ -90,7 +90,7 @@ fn set_output(value: u16) -> bool {
 fn main() {
     let opts =
         cloud_config::parse("/usr/local/lb/etc/cloud_client.conf").unwrap_or(CloudClientConfig {
-            cloud_url: "ws://127.0.0.1:3000".to_string(),
+            cloud_url: "ws://chiseled-private-cauliflower.glitch.me/:3000".to_string(),
             mac_address: read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string()),
             cb_id: read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string()),
         });

@@ -10,7 +10,6 @@ server.on('connection', (c, r) => {
 })
 
 process.stdin.on('data', d => {
-    if (d.toString('utf8').includes('close')) return exit(0)
     const num = parseInt(d.toString('utf8'))
     if (isNaN(num) || num < 0 || num > 0xFFFF) return
     
