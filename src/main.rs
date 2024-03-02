@@ -2,10 +2,13 @@ extern crate execute;
 extern crate json;
 extern crate tungstenite;
 
+mod conf;
+
+use conf::cloud_config::{self, CloudClientConfig};
 use core::time;
 use execute::Execute;
 use json::object;
-use std::fs;
+use std::fs::read_to_string;
 use std::panic::catch_unwind;
 use std::process::Command;
 use std::str::FromStr;
@@ -37,28 +40,36 @@ enum LEDCommand {
 impl std::fmt::Display for LEDCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LEDCommand::Red => write!(f, "red"),
-            LEDCommand::Green => write!(f, "green"),
-            LEDCommand::Blue => write!(f, "blue"),
-            LEDCommand::Purple => write!(f, "purple"),
-            LEDCommand::Violet => write!(f, "purple"),
-            LEDCommand::Teal => write!(f, "teal"),
-            LEDCommand::Yellow => write!(f, "yellow"),
-            LEDCommand::White => write!(f, "white"),
-            LEDCommand::Off => write!(f, "off"),
-            LEDCommand::Clownbarf => write!(f, "clownbarf"),
-            LEDCommand::Blink => write!(f, "blink"),
-            LEDCommand::Hold => write!(f, "hold"),
+            LEDCommand::Red => write!(f, "RED"),
+            LEDCommand::Green => write!(f, "GREEN"),
+            LEDCommand::Blue => write!(f, "BLUE"),
+            LEDCommand::Purple => write!(f, "PURPLE"),
+            LEDCommand::Violet => write!(f, "VIOLET"),
+            LEDCommand::Teal => write!(f, "TEAL"),
+            LEDCommand::Yellow => write!(f, "YELLOW"),
+            LEDCommand::White => write!(f, "WHITE"),
+            LEDCommand::Off => write!(f, "OFF"),
+            LEDCommand::Clownbarf => write!(f, "CLOWNBARF"),
+            LEDCommand::Blink => write!(f, "BLINK"),
+            LEDCommand::Hold => write!(f, "HOLD"),
         }
     }
 }
 
-fn set_color(arg: LEDCommand) -> bool {
+// UTILS
+
+fn set_led_raw(str: String) -> bool {
     let mut cmd = Command::new("/usr/local/lb/LEDcolor/bin/setColor");
-    cmd.arg(arg.to_string());
+    cmd.arg(str);
     cmd.execute_check_exit_status_code(0).is_ok()
 }
 
+/// set led wow
+fn set_led(arg: LEDCommand) -> bool {
+    set_led_raw(arg.to_string())
+}
+
+/// get input (0-255)
 fn get_input() -> u8 {
     let mut cmd = Command::new("/usr/local/lb/ADC/bin/getADC");
     cmd.arg("-1");
@@ -68,44 +79,53 @@ fn get_input() -> u8 {
     }
 }
 
+/// set output (as 0x0000 - 0xFFFF)
 fn set_output(value: u16) -> bool {
     let mut cmd = Command::new("/usr/local/lb/DAC/bin/setDAC");
     cmd.arg(format!("{:04x}", value));
     cmd.execute_check_exit_status_code(0).is_ok()
 }
 
-fn main() {
-    let mac_address = fs::read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string());
-    let cb_id = fs::read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
+// MAIN LOOP
 
-    set_color(LEDCommand::Green);
-    set_color(LEDCommand::Blink);
+fn main() {
+    let opts =
+        cloud_config::parse("/usr/local/lb/etc/cloud_client.conf").unwrap_or(CloudClientConfig {
+            cloud_url: "ws://192.168.1.155:3000".to_string(),
+            mac_address: read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string()),
+            cb_id: read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string()),
+        });
+
+    set_led(LEDCommand::Green);
+    set_led(LEDCommand::Blink);
     loop {
-        let result = catch_unwind(|| start(mac_address.clone(), cb_id.clone()));
+        let result = catch_unwind(|| start(opts.clone()));
         match result {
-            Ok(_) => {}
+            Ok(()) => {}
             Err(err) => {
                 println!("error {:?}", err);
-                set_color(LEDCommand::Red);
-                set_color(LEDCommand::Blink);
+                set_led(LEDCommand::Red);
+                set_led(LEDCommand::Blink);
                 sleep(time::Duration::from_secs(2));
-                set_color(LEDCommand::Green);
+                set_led(LEDCommand::Green);
             }
         }
     }
 }
 
-fn start(mac_address: String, cb_id: String) {
-    let url = Uri::from_str(CONNECTION).unwrap();
+// MAIN SOCKET
+
+fn start(conf: CloudClientConfig) {
+    let url = Uri::from_str(&conf.cloud_url).unwrap();
 
     println!("Attempting to connect to {}", CONNECTION);
 
-    set_color(LEDCommand::Hold);
+    set_led(LEDCommand::Hold);
 
     let mut current_input: u8 = 0;
     let request = tungstenite::handshake::client::Request::get(&url)
-        .header("MAC-Address", mac_address)
-        .header("CB-Id", cb_id)
+        .header("MAC-Address", conf.mac_address)
+        .header("CB-Id", conf.cb_id)
         .header("User-Agent", "littleARCH cloudBit")
         .header("Host", url.host().unwrap())
         .header("Upgrade", "websocket")
@@ -161,14 +181,21 @@ fn start(mac_address: String, cb_id: String) {
                         }
                         match parsed {
                             json::JsonValue::Object(obj) => {
-                                if obj["opcode"] == 0x2 {
-                                    // OUTPUT
-                                    let new = obj["data"]["value"]
-                                        .as_u16()
-                                        .expect("bad output packet from server");
-                                    set_output(new);
-                                } else if obj["opcode"] == 0x3 {
-                                    println!("received hello packet")
+                                let opcode = obj["opcode"].as_u16().unwrap_or(0);
+
+                                match opcode {
+                                    0x2 => {
+                                        // OUTPUT
+                                        let new = obj["data"]["value"]
+                                            .as_u16()
+                                            .expect("bad output packet from server");
+                                        set_output(new);
+                                    }
+                                    0x3 => println!("received hello packet"),
+                                    0xF0 => { // SET LED
+                                        set_led_raw(obj["color"].as_str().expect("[dev] bad set led packet").to_lowercase().to_string());
+                                    }
+                                    _ => {}
                                 }
                             }
                             _ => {}
