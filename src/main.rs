@@ -39,18 +39,18 @@ enum LEDCommand {
 impl std::fmt::Display for LEDCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LEDCommand::Red => write!(f, "RED"),
-            LEDCommand::Green => write!(f, "GREEN"),
-            LEDCommand::Blue => write!(f, "BLUE"),
-            LEDCommand::Purple => write!(f, "PURPLE"),
-            LEDCommand::Violet => write!(f, "VIOLET"),
-            LEDCommand::Teal => write!(f, "TEAL"),
-            LEDCommand::Yellow => write!(f, "YELLOW"),
-            LEDCommand::White => write!(f, "WHITE"),
-            LEDCommand::Off => write!(f, "OFF"),
-            LEDCommand::Clownbarf => write!(f, "CLOWNBARF"),
-            LEDCommand::Blink => write!(f, "BLINK"),
-            LEDCommand::Hold => write!(f, "HOLD"),
+            LEDCommand::Red => write!(f, "red"),
+            LEDCommand::Green => write!(f, "green"),
+            LEDCommand::Blue => write!(f, "blue"),
+            LEDCommand::Purple => write!(f, "purple"),
+            LEDCommand::Violet => write!(f, "violet"),
+            LEDCommand::Teal => write!(f, "teal"),
+            LEDCommand::Yellow => write!(f, "yellow"),
+            LEDCommand::White => write!(f, "white"),
+            LEDCommand::Off => write!(f, "off"),
+            LEDCommand::Clownbarf => write!(f, "clownbarf"),
+            LEDCommand::Blink => write!(f, "blink"),
+            LEDCommand::Hold => write!(f, "hold"),
         }
     }
 }
