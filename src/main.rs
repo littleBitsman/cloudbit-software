@@ -127,18 +127,18 @@ fn start(conf: CloudClientConfig) {
 
     let mut current_input: u8 = 0;
     let request = tungstenite::handshake::client::Request::get(&conf.cloud_url)
-        // .header("MAC-Address", conf.mac_address.replace(":", "\\:").as_str())
+        .header("MAC-Address", conf.mac_address.as_str())
         .header("CB-Id", conf.cb_id.as_str())
         .header("User-Agent", "littleARCH cloudBit")
         .header("Host", url.host_str().unwrap())
+        .header("Connection", "Upgrade")
         .header("Upgrade", "websocket")
-        .header("Connection", "upgrade")
         .header("Sec-Websocket-Version", "13")
         .header("Sec-Websocket-Key", generate_key().as_str())
         .body(());
 
     if request.is_err() {
-        panic!("err {}", request.unwrap_err())
+        panic!("{}", request.unwrap_err())
     }
 
     let (client_raw, _) = connect(request.unwrap()).unwrap();
