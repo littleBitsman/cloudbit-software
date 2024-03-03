@@ -87,6 +87,8 @@ fn set_output(value: u16) -> bool {
 
 // MAIN LOOP
 fn main() {
+    set_led(LEDCommand::Clownbarf);
+
     let opts =
         cloud_config::parse("/usr/local/lb/etc/cloud_client.conf").unwrap_or(CloudClientConfig {
             cloud_url: "ws://chiseled-private-cauliflower.glitch.me/:3000".to_string(),
@@ -94,7 +96,6 @@ fn main() {
             cb_id: read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string()),
         });
 
-    set_led(LEDCommand::Clownbarf);
     // set_led(LEDCommand::Blink);
     loop {
         let result = catch_unwind(|| start(opts.clone()));
