@@ -1,4 +1,4 @@
-cargo build --release --target armv5te-unknown-linux-gnueabi
+cargo build --release --target armv5te-unknown-linux-gnueabi --static
 mv target/armv5te-unknown-linux-gnueabi/release/cloud_client ./
 
 # commit
