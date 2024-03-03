@@ -137,10 +137,13 @@ fn start(conf: CloudClientConfig) {
         .header("Connection", "upgrade")
         .header("Sec-Websocket-Version", 13)
         .header("Sec-Websocket-Key", generate_key())
-        .body(())
-        .unwrap();
+        .body(());
 
-    let (client_raw, _) = connect(request).unwrap();
+    if request.is_err() {
+        panic!("err {}", request.unwrap_err())
+    }
+
+    let (client_raw, _) = connect(request.unwrap()).unwrap();
     let client = Arc::new(Mutex::new(client_raw));
 
     println!("Successfully connected");
