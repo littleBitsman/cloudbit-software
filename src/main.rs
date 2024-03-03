@@ -3,13 +3,9 @@ extern crate json;
 extern crate tungstenite;
 extern crate url;
 
-mod conf;
-
-use conf::cloud_config::{self, CloudClientConfig};
 use core::time;
 use execute::Execute;
 use json::object;
-use std::fs::read_to_string;
 use std::panic::catch_unwind;
 use std::process::Command;
 use std::str::FromStr;
@@ -93,18 +89,11 @@ fn set_output(value: u16) -> bool {
 
 // MAIN LOOP
 fn main() {
-    let opts =
-        cloud_config::parse("/usr/local/lb/etc/cloud_client.conf").unwrap_or(CloudClientConfig {
-            cloud_url: "wss://super-duper-robot-q6p95vjrr7xh47xr-3000.app.github.dev/".to_string(),
-            mac_address: read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string()),
-            cb_id: read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string()),
-        });
-
     set_led(LEDCommand::Teal);
     set_led(LEDCommand::Blink);
 
     loop {
-        let result = catch_unwind(|| start(opts.clone()));
+        let result = catch_unwind(|| start("ws://chiseled-private-cauliflower.glitch.me/"));
         match result {
             Ok(()) => println!("you closed the connection somehow why??"),
             Err(err) => {
@@ -119,8 +108,8 @@ fn main() {
 }
 
 // MAIN SOCKET
-fn start(conf: CloudClientConfig) {
-    let url = Url::from_str(&conf.cloud_url).unwrap();
+fn start(conf: &str) {
+    let url = Url::from_str(conf).unwrap();
 
     println!(
         "Attempting to connect to {} ({})",
@@ -131,7 +120,7 @@ fn start(conf: CloudClientConfig) {
     set_led(LEDCommand::Hold);
 
     let mut current_input: u8 = 0;
-    let request = Request::get(&conf.cloud_url)
+    let request = Request::get(url.as_str())
         // .header("MAC-Address", conf.mac_address.as_str())
         // .header("CB-Id", conf.cb_id.as_str())
         .header("User-Agent", "littleARCH cloudBit")
