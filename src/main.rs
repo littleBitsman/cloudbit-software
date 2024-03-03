@@ -95,7 +95,7 @@ fn set_output(value: u16) -> bool {
 fn main() {
     let opts =
         cloud_config::parse("/usr/local/lb/etc/cloud_client.conf").unwrap_or(CloudClientConfig {
-            cloud_url: "ws://chiseled-private-cauliflower.glitch.me/".to_string(),
+            cloud_url: "wss://super-duper-robot-q6p95vjrr7xh47xr-3000.app.github.dev/".to_string(),
             mac_address: read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string()),
             cb_id: read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string()),
         });
@@ -133,7 +133,7 @@ fn start(conf: CloudClientConfig) {
     let mut current_input: u8 = 0;
     let request = Request::get(&conf.cloud_url)
         // .header("MAC-Address", conf.mac_address.as_str())
-        // .header("CB-Id", conf.cb_id.as_str())
+        .header("CB-Id", conf.cb_id.as_str())
         .header("User-Agent", "littleARCH cloudBit")
         .header("Host", url.host_str().unwrap())
         .header("Connection", "Upgrade")
