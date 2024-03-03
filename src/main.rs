@@ -73,8 +73,9 @@ fn get_input() -> u8 {
     match cmd.execute_output() {
         Ok(output) => {
             if let Some(line) = String::from_utf8_lossy(&output.stdout).lines().next() {
-                u8::from_str(line).unwrap()
+                u8::from_str(line.trim()).unwrap()
             } else {
+                eprintln!("failed to read input properly");
                 0
             }
         },
