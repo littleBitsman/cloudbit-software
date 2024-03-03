@@ -73,7 +73,13 @@ fn get_input() -> u8 {
     let mut cmd = Command::new("/usr/local/lb/ADC/bin/getADC");
     cmd.arg("-1");
     match cmd.execute_output() {
-        Ok(output) => output.stdout[0],
+        Ok(output) => {
+            if let Some(line) = String::from_utf8_lossy(&output.stdout).lines().next() {
+                u8::from_str(line).unwrap()
+            } else {
+                0
+            }
+        },
         Err(_) => 0,
     }
 }
