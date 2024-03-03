@@ -115,7 +115,7 @@ fn main() {
 // MAIN SOCKET
 
 fn start(conf: CloudClientConfig) {
-    set_output(0xFF00);
+    set_output(0x5555);
 
     let url = Url::from_str(&conf.cloud_url).unwrap();
 
@@ -144,6 +144,8 @@ fn start(conf: CloudClientConfig) {
     let client = Arc::new(Mutex::new(client_raw));
 
     println!("Successfully connected");
+
+    set_output(0x9999);
 
     set_led(LEDCommand::Green);
 
