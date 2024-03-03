@@ -127,9 +127,9 @@ fn start(conf: CloudClientConfig) {
 
     let mut current_input: u8 = 0;
     let request = Request::get(&conf.cloud_url)
-        .header("MAC-Address", conf.mac_address.as_str())
-        .header("CB-Id", conf.cb_id.as_str())
-        .header("User-Agent", "littleARCH cloudBit")
+        // .header("MAC-Address", conf.mac_address.as_str())
+        // .header("CB-Id", conf.cb_id.as_str())
+        // .header("User-Agent", "littleARCH cloudBit")
         .header("Host", url.host_str().unwrap())
         .header("Connection", "Upgrade")
         .header("Upgrade", "websocket")
