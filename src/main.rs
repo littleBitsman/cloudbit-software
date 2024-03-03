@@ -16,7 +16,7 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use std::thread::{self, sleep};
 use tungstenite::connect;
-use tungstenite::handshake::client::generate_key;
+use tungstenite::handshake::client::{generate_key, Request};
 use tungstenite::Message;
 use url::Url;
 
@@ -91,7 +91,7 @@ fn main() {
 
     let opts =
         cloud_config::parse("/usr/local/lb/etc/cloud_client.conf").unwrap_or(CloudClientConfig {
-            cloud_url: "ws://chiseled-private-cauliflower.glitch.me/:3000".to_string(),
+            cloud_url: "ws://chiseled-private-cauliflower.glitch.me/".to_string(),
             mac_address: read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string()),
             cb_id: read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string()),
         });
@@ -126,7 +126,7 @@ fn start(conf: CloudClientConfig) {
     set_led(LEDCommand::Hold);
 
     let mut current_input: u8 = 0;
-    let request = tungstenite::handshake::client::Request::get(&conf.cloud_url)
+    let request = Request::get(&conf.cloud_url)
         .header("MAC-Address", conf.mac_address.as_str())
         .header("CB-Id", conf.cb_id.as_str())
         .header("User-Agent", "littleARCH cloudBit")
