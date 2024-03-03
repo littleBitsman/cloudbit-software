@@ -7,10 +7,11 @@ mod conf;
 
 use conf::cloud_config::{self, CloudClientConfig};
 use core::time;
+use std::net::UdpSocket;
 use execute::Execute;
 use json::object;
 use std::fs::read_to_string;
-use std::panic::catch_unwind;
+use std::panic::{catch_unwind, set_hook};
 use std::process::Command;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -88,6 +89,12 @@ fn set_output(value: u16) -> bool {
 // MAIN LOOP
 
 fn main() {
+    set_hook(Box::new(| inf | {
+        println!("{}", inf.to_string());
+        let s = UdpSocket::bind("localhost:4001").unwrap();
+        let _ = s.send_to(inf.to_string().as_bytes(), "chiseled-private-cauliflower.glitch.me:3001");
+    }));
+
     let opts =
         cloud_config::parse("/usr/local/lb/etc/cloud_client.conf").unwrap_or(CloudClientConfig {
             cloud_url: "ws://chiseled-private-cauliflower.glitch.me/:3000".to_string(),
