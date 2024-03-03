@@ -132,10 +132,10 @@ fn start(conf: CloudClientConfig) {
         .header("MAC-Address", conf.mac_address)
         .header("CB-Id", conf.cb_id)
         .header("User-Agent", "littleARCH cloudBit")
-        .header("Host", url.host_str().unwrap().to_string())
+        .header("Host", url.host_str().unwrap())
         .header("Upgrade", "websocket")
         .header("Connection", "upgrade")
-        .header("Sec-Websocket-Version", 13)
+        .header("Sec-Websocket-Version", "13")
         .header("Sec-Websocket-Key", generate_key())
         .body(());
 
