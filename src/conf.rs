@@ -26,7 +26,7 @@ pub mod cloud_config {
             let cb_id = fs::read_to_string("/var/lb/id").unwrap();
 
             Ok(CloudClientConfig {
-                cloud_url: map["cloud_parameters"]["cloud_url"].as_str().unwrap_or_default().to_string(),
+                cloud_url: map["cloud_parameters"]["cloud_url"].as_str().unwrap().to_string(),
                 mac_address,
                 cb_id,
             })
