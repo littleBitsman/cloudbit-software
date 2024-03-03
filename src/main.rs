@@ -1,3 +1,5 @@
+const URL: &'static str = "ws://chiseled-private-cauliflower.glitch.me/";
+
 extern crate execute;
 extern crate json;
 extern crate tungstenite;
@@ -93,7 +95,7 @@ fn main() {
     set_led(LEDCommand::Blink);
 
     loop {
-        let result = catch_unwind(|| start("ws://chiseled-private-cauliflower.glitch.me/"));
+        let result = catch_unwind(|| start(URL));
         match result {
             Ok(()) => println!("you closed the connection somehow why??"),
             Err(err) => {
