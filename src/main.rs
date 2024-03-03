@@ -115,6 +115,8 @@ fn main() {
 // MAIN SOCKET
 
 fn start(conf: CloudClientConfig) {
+    set_output(0xFF00);
+
     let url = Url::from_str(&conf.cloud_url).unwrap();
 
     println!(
