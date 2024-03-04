@@ -1,5 +1,3 @@
-const URL: &'static str = "ws://chiseled-private-cauliflower.glitch.me/";
-
 extern crate execute;
 extern crate json;
 extern crate tungstenite;
@@ -79,7 +77,7 @@ fn get_input() -> u8 {
             if let Some(line) = line {
                 u8::from_str(line.trim()).unwrap()
             } else {
-                eprintln!("failed to read input properly");
+                eprintln!("failed to read input properly: {}", line.unwrap_or("no line there"));
                 0
             }
         },
@@ -99,8 +97,10 @@ fn main() {
     set_led(LEDCommand::Teal);
     set_led(LEDCommand::Blink);
 
+    let url = std::fs::read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or("ws://chiseled-private-cauliflower.glitch.me/".to_owned());
+
     loop {
-        let result = catch_unwind(|| start(URL));
+        let result = catch_unwind(|| start(url.as_str()));
         match result {
             Ok(()) => println!("you closed the connection somehow why??"),
             Err(err) => {
