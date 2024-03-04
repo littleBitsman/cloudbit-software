@@ -225,17 +225,14 @@ fn start(conf: &str) {
         if right_now != current_input {
             current_input = right_now;
             let mut client = client.lock().unwrap();
-            let success = client
+            client
                 .send(Message::Text(json::stringify(object! {
                     opcode: 0x1,
                     data: object! {
                         value: current_input
                     }
                 })))
-                .is_ok();
-            if !success {
-                break;
-            }
+                .unwrap();
         }
     }
 
