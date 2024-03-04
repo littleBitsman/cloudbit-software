@@ -84,7 +84,7 @@ fn set_output(value: u16) -> bool {
 }
 
 // MAIN LOOP
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() {
     set_led(LEDCommand::Teal);
     set_led(LEDCommand::Blink);
@@ -119,7 +119,7 @@ async fn main() {
 
     let (client, _) = connect_async(request).await.unwrap();
 
-    let (mut tx, mut reciever) = client.split();
+    let (mut tx, mut receiver) = client.split();
 
     let (sender, rx) = channel::<Message>();
     let sender2 = sender.clone();
@@ -141,15 +141,7 @@ async fn main() {
 
     let receive_loop = spawn(async move {
         // Receive loop
-        loop {
-            let message = match reciever.next().await.unwrap() {
-                Ok(m) => m,
-                Err(e) => {
-                    eprintln!("Receive Loop: {:?}", e);
-                    let _ = sender.send(Message::Close(None));
-                    return;
-                }
-            };
+        while let Ok(message) = receiver.next().await.unwrap() {
             match message {
                 Message::Close(a) => {
                     // Got a close message, so send a close message and return
