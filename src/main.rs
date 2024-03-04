@@ -72,7 +72,7 @@ fn get_input() -> u8 {
     match cmd.output() {
         Ok(output) => {
             let lines = String::from_utf8_lossy(&output.stdout);
-            println!("{:?}", lines);
+            println!("{:?}", lines.lines());
             let line = lines.lines().nth(0);
             if let Some(line) = line {
                 u8::from_str(line.trim()).unwrap()
