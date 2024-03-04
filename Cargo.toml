@@ -11,4 +11,4 @@ json = "0.12.4"
 
 [[bin]]
 name = "cloudbit-software"
-path = "main.rs"
+path = "src/main.rs"
