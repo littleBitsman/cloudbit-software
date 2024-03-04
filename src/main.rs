@@ -84,7 +84,7 @@ fn set_output(value: u16) -> bool {
 }
 
 // MAIN LOOP
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     set_led(LEDCommand::Teal);
     set_led(LEDCommand::Blink);
