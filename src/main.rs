@@ -73,7 +73,7 @@ fn get_input() -> u8 {
         Ok(output) => {
             let lines = String::from_utf8_lossy(&output.stdout);
             println!("{:?}", lines.lines());
-            let line = lines.lines().nth(0);
+            let line = lines.split("\n").next();
             if let Some(line) = line {
                 u8::from_str(line.trim()).unwrap()
             } else {
