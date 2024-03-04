@@ -130,9 +130,10 @@ async fn main() {
 
     let send_loop = spawn(async move {
         loop {
-            let send = rx.try_recv();
-            if send.is_ok() {
-                tx.send(send.unwrap()).await.unwrap();
+            if let Ok(msg) = rx.recv() {
+                tx.send(msg).await.unwrap();
+            } else {
+                break
             }
         }
     });
