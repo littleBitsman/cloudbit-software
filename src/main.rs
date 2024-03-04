@@ -1,8 +1,3 @@
-extern crate execute;
-extern crate json;
-extern crate tungstenite;
-extern crate url;
-
 use core::time;
 use execute::Execute;
 use json::object;
@@ -221,18 +216,21 @@ fn start(conf: &str) {
 
     loop {
         let right_now = get_input();
-        println!("input {}", right_now);
         if right_now != current_input {
+            println!("input {}", right_now);
             current_input = right_now;
             let mut client = client.lock().unwrap();
-            client
+            let success = client
                 .send(Message::Text(json::stringify(object! {
                     opcode: 0x1,
                     data: object! {
                         value: current_input
                     }
                 })))
-                .unwrap();
+                .is_ok();
+            if !success {
+                break
+            }
         }
     }
 
