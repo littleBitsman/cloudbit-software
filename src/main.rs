@@ -128,16 +128,25 @@ async fn main() {
 
     set_led(LEDCommand::Green);
 
-    let send_loop = spawn(async move {
+    let send_loop = async move {
         loop {
             match rx.recv() {
                 Ok(msg) => {
-                    let _ = tx.send(msg);
+                    let result = tx.send(msg).await;
+                    match result {
+                        Err(e) => {
+                            println!("error {}", e)
+                        }
+                        _ => {}
+                    }
                 }
-                Err(e) => eprintln!("failed to send: {}", e)
+                Err(e) => {
+                    eprintln!("failed to send: {}", e);
+                    break
+                }
             }
         }
-    });
+    };
 
     let receive_loop = spawn(async move {
         // Receive loop
@@ -226,5 +235,5 @@ async fn main() {
     println!("connection closed");
 
     receive_loop.await.unwrap_or_default();
-    send_loop.await.unwrap_or_default();
+    send_loop.await;
 }
