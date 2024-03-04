@@ -1,8 +1,8 @@
 use execute::Execute;
 use futures::{SinkExt, StreamExt};
 use json::object;
-use std::{process::Command, sync::mpsc::channel};
 use std::str::FromStr;
+use std::{process::Command, sync::mpsc::channel};
 use tokio::spawn;
 use tokio_tungstenite::{
     connect_async,
@@ -130,10 +130,11 @@ async fn main() {
 
     let send_loop = spawn(async move {
         loop {
-            if let Ok(msg) = rx.recv() {
-                tx.send(msg).await.unwrap();
-            } else {
-                break
+            match rx.recv() {
+                Ok(msg) => {
+                    let _ = tx.send(msg);
+                }
+                Err(_) => break,
             }
         }
     });
@@ -215,15 +216,14 @@ async fn main() {
         if right_now != current_input {
             println!("input {}", right_now);
             current_input = right_now;
-            let success = sender2
-                .send(Message::Text(json::stringify(object! {
-                    opcode: 0x1,
-                    data: object! {
-                        value: current_input
-                    }
-                })))
-                .is_ok();
-            if !success {
+            let result = sender2.send(Message::Text(json::stringify(object! {
+                opcode: 0x1,
+                data: object! {
+                    value: current_input
+                }
+            })));
+            if !result.is_ok() {
+                eprintln!("{}", result.unwrap_err());
                 break;
             }
         }
