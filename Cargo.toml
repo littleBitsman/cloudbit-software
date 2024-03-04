@@ -15,7 +15,6 @@ tokio = { version = "1.36.0", features = ["rt", "macros"] }
 tokio-tungstenite = { version = "0.21.0", features = ["rustls", "tokio-rustls"] }
 # openssl = { version = "0.10.64", features = ["vendored"] }
 toml = "0.8.10"
-tungstenite = { version = "0.21.0", features = ["rustls"] }
 url = "2.5.0"
 
 [[bin]]

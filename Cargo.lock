@@ -83,7 +83,6 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "toml",
- "tungstenite",
  "url",
 ]
 
@@ -764,7 +763,6 @@ dependencies = [
  "httparse",
  "log",
  "rand",
- "rustls",
  "sha1",
  "thiserror",
  "url",
