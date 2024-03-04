@@ -23,4 +23,6 @@ process.stdin.on('data', d => {
             value: num
         }
     }))
+
+    console.log('ba')
 })

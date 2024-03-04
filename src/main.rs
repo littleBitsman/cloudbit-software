@@ -134,7 +134,7 @@ async fn main() {
                 Ok(msg) => {
                     let _ = tx.send(msg);
                 }
-                Err(_) => break,
+                Err(e) => eprintln!("failed to send: {}", e)
             }
         }
     });
