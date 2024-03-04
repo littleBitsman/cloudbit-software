@@ -73,7 +73,6 @@ fn get_input() -> u8 {
         Ok(output) => {
             let lines = String::from_utf8_lossy(&output.stdout);
             let num = lines.split("\n").next().unwrap_or("0");
-            println!("{}", num);
             u8::from_str(num.trim()).unwrap()
         },
         Err(_) => 0,
@@ -222,6 +221,7 @@ fn start(conf: &str) {
 
     loop {
         let right_now = get_input();
+        println!("input {}", right_now);
         if right_now != current_input {
             current_input = right_now;
             let mut client = client.lock().unwrap();
