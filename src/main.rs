@@ -1,14 +1,17 @@
-use core::time;
 use execute::Execute;
+use futures::channel::mpsc::channel;
+use futures::{SinkExt, StreamExt};
 use json::object;
-use std::panic::catch_unwind;
 use std::process::Command;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
-use std::thread::{self, sleep};
-use tungstenite::connect;
-use tungstenite::handshake::client::{generate_key, Request};
-use tungstenite::Message;
+use tokio::spawn;
+use tokio_tungstenite::{
+    connect_async,
+    tungstenite::{
+        handshake::client::{generate_key, Request},
+        Message,
+    },
+};
 use url::Url;
 
 #[allow(dead_code)]
@@ -69,7 +72,7 @@ fn get_input() -> u8 {
             let lines = String::from_utf8_lossy(&output.stdout);
             let num = lines.split("\n").next().unwrap_or("0");
             u8::from_str(num.trim()).unwrap()
-        },
+        }
         Err(_) => 0,
     }
 }
@@ -82,30 +85,17 @@ fn set_output(value: u16) -> bool {
 }
 
 // MAIN LOOP
-fn main() {
+#[tokio::main]
+async fn main() {
     set_led(LEDCommand::Teal);
     set_led(LEDCommand::Blink);
 
-    let url = std::fs::read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or("ws://chiseled-private-cauliflower.glitch.me/".to_owned());
-
-    loop {
-        let result = catch_unwind(|| start(url.as_str()));
-        match result {
-            Ok(()) => println!("you closed the connection somehow why??"),
-            Err(err) => {
-                println!("error {:?}", err);
-                set_led(LEDCommand::Red);
-                set_led(LEDCommand::Blink);
-                sleep(time::Duration::from_secs(2));
-                set_led(LEDCommand::Teal);
-            }
-        }
-    }
-}
-
-// MAIN SOCKET
-fn start(conf: &str) {
-    let url = Url::from_str(conf).unwrap();
+    let url = Url::from_str(
+        &std::fs::read_to_string("/usr/local/lb/cloud_client/server_url")
+            // .unwrap_or("ws://chiseled-private-cauliflower.glitch.me/".to_owned())
+            .unwrap_or("ws://localhost:3000/".to_owned()),
+    )
+    .unwrap();
 
     println!(
         "Attempting to connect to {} ({})",
@@ -125,118 +115,117 @@ fn start(conf: &str) {
         .header("Upgrade", "websocket")
         .header("Sec-Websocket-Version", "13")
         .header("Sec-Websocket-Key", generate_key().as_str())
-        .body(());
+        .body(())
+        .unwrap();
 
-    if request.is_err() {
-        panic!("{}", request.unwrap_err())
-    }
+    let (client, _) = connect_async(request).await.unwrap();
 
-    let (client_raw, _) = connect(request.unwrap()).unwrap();
-    let client = Arc::new(Mutex::new(client_raw));
+    let (mut tx, mut receiver) = client.split();
+
+    let (mut sender, mut rx) = channel::<Message>(8);
+    let mut sender2 = sender.clone();
 
     println!("Successfully connected");
 
     set_led(LEDCommand::Green);
 
-    let receive_loop = {
-        let client = Arc::clone(&client);
-        thread::spawn(move || {
-            // Receive loop
-            loop {
-                let mut client = client.lock().unwrap();
-                let message = match client.read() {
-                    Ok(m) => m,
-                    Err(e) => {
-                        eprintln!("Receive Loop: {:?}", e);
-                        let _ = client.send(Message::Close(None));
-                        return;
-                    }
-                };
-                match message {
-                    Message::Close(a) => {
-                        // Got a close message, so send a close message and return
-                        let _ = client.send(Message::Close(a));
-                    }
-                    Message::Ping(data) => {
-                        match client.send(Message::Pong(data)) {
-                            // Send a pong in response
-                            Ok(()) => (),
-                            Err(e) => {
-                                eprintln!("Receive Loop: {:?}", e);
-                                return;
-                            }
-                        }
-                    }
-                    Message::Text(data) => {
-                        println!("{}", data);
-                        let r = json::parse(&data);
-                        if !r.is_ok() {
-                            return eprintln!("bad packet from server")
-                        }
-                        let parsed = r.unwrap();
-                        if !parsed.is_object() {
-                            return eprintln!("bad packet from server")
-                        }
-                        match parsed {
-                            json::JsonValue::Object(obj) => {
-                                let opcode = obj["opcode"].as_u16().unwrap_or(0);
+    let send_loop = spawn(async move {
+        while let Some(msg) = rx.next().await {
+            let result = tx.send(msg).await;
+            match result {
+                Ok(()) => println!("success"),
+                Err(e) => println!("error {}", e),
+            }
+        }
+    });
 
-                                match opcode {
-                                    0x2 => {
-                                        // OUTPUT
-                                        let new = obj["data"]["value"]
-                                            .as_u16()
-                                            .expect("bad output packet from server");
-                                        set_output(new);
-                                    }
-                                    0x3 => println!("received hello packet"),
-                                    0xF0 => {
-                                        // SET LED
-                                        set_led_raw(
-                                            obj["color"]
-                                                .as_str()
-                                                .expect("[dev] bad set led packet")
-                                                .to_lowercase()
-                                                .to_string(),
-                                        );
-                                    }
-                                    _ => {}
-                                }
-                            }
-                            _ => {}
+    let receive_loop = spawn(async move {
+        // Receive loop
+        while let Ok(message) = receiver.next().await.unwrap() {
+            match message {
+                Message::Close(a) => {
+                    // Got a close message, so send a close message and return
+                    let _ = sender.send(Message::Close(a));
+                }
+                Message::Ping(data) => {
+                    match sender.send(Message::Pong(data)).await {
+                        // Send a pong in response
+                        Ok(()) => (),
+                        Err(e) => {
+                            eprintln!("Receive Loop: {:?}", e);
+                            return;
                         }
-                    }
-                    _ => {
-                        eprintln!("unknown content")
                     }
                 }
+                Message::Text(data) => {
+                    println!("{}", data);
+                    let r = json::parse(&data);
+                    if !r.is_ok() {
+                        return eprintln!("bad packet from server");
+                    }
+                    let parsed = r.unwrap();
+                    if !parsed.is_object() {
+                        return eprintln!("bad packet from server");
+                    }
+                    match parsed {
+                        json::JsonValue::Object(obj) => {
+                            let opcode = obj["opcode"].as_u16().unwrap_or(0);
+
+                            match opcode {
+                                0x2 => {
+                                    // OUTPUT
+                                    let new = obj["data"]["value"]
+                                        .as_u16()
+                                        .expect("bad output packet from server");
+                                    set_output(new);
+                                }
+                                0x3 => println!("received hello packet"),
+                                0xF0 => {
+                                    // SET LED
+                                    set_led_raw(
+                                        obj["color"]
+                                            .as_str()
+                                            .expect("[dev] bad set led packet")
+                                            .to_lowercase()
+                                            .to_string(),
+                                    );
+                                }
+                                _ => {}
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {
+                    eprintln!("unknown content")
+                }
             }
-        })
-    };
+        }
+    });
 
     loop {
         let right_now = get_input();
         if right_now != current_input {
             println!("input {}", right_now);
+            println!("input {}", right_now);
             current_input = right_now;
-            let mut client = client.lock().unwrap();
-            let success = client
-                .send(Message::Text(json::stringify(object! {
-                    opcode: 0x1,
-                    data: object! {
-                        value: current_input
-                    }
-                })))
-                .is_ok();
-            if !success {
-                break
+            let result = sender2.send(Message::Text(json::stringify(object! {
+                opcode: 0x1,
+                data: object! {
+                    value: current_input
+                }
+            }))).await;
+            if !result.is_ok() {
+                eprintln!("{}", result.unwrap_err());
+                break;
             }
         }
     }
 
-    client.lock().unwrap().send(Message::Close(None)).unwrap();
-    
+    sender2.send(Message::Close(None)).await.unwrap();
+
     println!("connection closed");
 
-    receive_loop.join().unwrap_or_default();
+    receive_loop.await.unwrap_or_default();
+    send_loop.await.unwrap_or_default();
 }
