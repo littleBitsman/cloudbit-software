@@ -5,6 +5,7 @@ use execute::Execute;
 use futures::channel::mpsc::channel;
 use futures::{SinkExt, StreamExt};
 use json::object;
+use std::fs::read_to_string;
 use std::panic::set_hook;
 use std::process::Command;
 use std::str::FromStr;
@@ -103,7 +104,7 @@ async fn main() {
     set_led(LEDCommand::Blink);
 
     // Parse url at /usr/local/lb/cloud_client/server_url if it exists, use DEFAULT_URL if it doesn't
-    let url = Url::from_str(&std::fs::read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or(DEFAULT_URL.to_string()))
+    let url = Url::from_str(&read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or(DEFAULT_URL.to_string()))
         .unwrap_or(Url::from_str(DEFAULT_URL).unwrap());
 
     println!(
@@ -135,6 +136,12 @@ async fn main() {
     let mut sender2 = sender.clone();
 
     println!("Successfully connected");
+
+    tx.send(Message::text(json::stringify(object! {
+        opcode: 0x3,
+        mac_address: read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string()),
+        cb_id: read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string())
+    }))).await.unwrap();
 
     set_led(LEDCommand::Green);
     set_led(LEDCommand::Hold);
@@ -213,7 +220,7 @@ async fn main() {
         if right_now != current_input {
             current_input = right_now;
             sender2
-                .send(Message::Text(json::stringify(object! {
+                .send(Message::text(json::stringify(object! {
                     opcode: 0x1,
                     data: object! {
                         value: current_input
