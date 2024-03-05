@@ -3,8 +3,12 @@ name: Rust
 on:
   push:
     branches: [ "main" ]
+    paths: ["src", "src/**"]
   pull_request:
     branches: [ "main" ]
+    paths: ["src", "src/**"]
+    
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
