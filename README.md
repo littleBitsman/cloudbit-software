@@ -29,6 +29,15 @@ CPU usage is always less than 5%.
 5. run `cross build --release --target armv5te-unknown-linux-musleabi`
 6. your binary will be found at `./target/armv5te-unknown-linux-musleabi/release/cloud_client`
 
+## protocol details
+The WebSocket exchanges and expects JSON strings/buffers on the stream. JSON not following the schema below is logged and ignored.
+
+The root *object* should always have an `opcode` key, whose value should be a number.
+
+When the `opcode` is equal to `0x1` (INPUT) or `0x2` (OUTPUT), a `data` object with the property `value` (number) can be (for INPUT payloads)/is (for OUTPUT payloads) expected in the root.
+
+Opcode `0x3` (IDENTIFY) is used right after the WebSocket handshake completes and the connection is established. IDENTIFY is only be sent from the client, and should never be sent from the server. An IDENTIFY payload has a `mac_address` (string) property and a `cb_id` (string) property.
+
 # license
 cloudbit-software © 2024 by littleBitsman is licensed under CC BY-NC-SA 4.0. To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/4.0/
 
