@@ -84,6 +84,8 @@ fn set_output(value: u16) -> bool {
     cmd.execute_check_exit_status_code(0).is_ok()
 }
 
+const DEFAULT_URL: &'static str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
+
 // MAIN LOOP
 #[tokio::main]
 async fn main() {
@@ -93,9 +95,9 @@ async fn main() {
     let url = Url::from_str(
         &std::fs::read_to_string("/usr/local/lb/cloud_client/server_url")
             // .unwrap_or("ws://chiseled-private-cauliflower.glitch.me/".to_owned())
-            .unwrap_or("ws://localhost:3000/".to_owned()),
+            .unwrap_or(DEFAULT_URL.to_string()),
     )
-    .unwrap();
+    .unwrap_or(Url::from_str(DEFAULT_URL).unwrap());
 
     println!(
         "Attempting to connect to {} ({})",
@@ -209,12 +211,14 @@ async fn main() {
             println!("input {}", right_now);
             println!("input {}", right_now);
             current_input = right_now;
-            let result = sender2.send(Message::Text(json::stringify(object! {
-                opcode: 0x1,
-                data: object! {
-                    value: current_input
-                }
-            }))).await;
+            let result = sender2
+                .send(Message::Text(json::stringify(object! {
+                    opcode: 0x1,
+                    data: object! {
+                        value: current_input
+                    }
+                })))
+                .await;
             if !result.is_ok() {
                 eprintln!("{}", result.unwrap_err());
                 break;
