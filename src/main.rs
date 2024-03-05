@@ -207,6 +207,7 @@ async fn main() {
         let right_now = get_input();
         if right_now != current_input {
             println!("input {}", right_now);
+            println!("input {}", right_now);
             current_input = right_now;
             let result = sender2.send(Message::Text(json::stringify(object! {
                 opcode: 0x1,
