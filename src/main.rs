@@ -134,10 +134,8 @@ async fn main() {
                 Ok(msg) => {
                     let result = tx.send(msg).await;
                     match result {
-                        Err(e) => {
-                            println!("error {}", e)
-                        }
-                        _ => {}
+                        Ok(()) => println!("success"),
+                        Err(e) => println!("error {}", e)
                     }
                 }
                 Err(e) => {
