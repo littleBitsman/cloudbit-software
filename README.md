@@ -1,9 +1,9 @@
 # cloudbit-software
 *This version is intended for communicating with the main server.*
-*If you are looking to set it up for a local server, see the `udp` branch.*
+*If you are looking to set it up for a local server, see the `udp` branch. (NOT TESTED THOROUGHLY)*
 
 ## stats
-(NOTE: UPDATE NEEDED)
+(NOTE: UPDATE + FURTHER TESTING NEEDED)
 Memory usage is around 0.59 MB.
 CPU usage is always less than 5%.
 
