@@ -1,3 +1,6 @@
+// cloudbit-software © 2024 by littleBitsman is licensed under CC BY-NC-SA 4.0. 
+// To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/4.0/
+
 use execute::Execute;
 use futures::channel::mpsc::channel;
 use futures::{SinkExt, StreamExt};
