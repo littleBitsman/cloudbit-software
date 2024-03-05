@@ -1,8 +1,9 @@
 use execute::Execute;
+use futures::channel::mpsc::channel;
 use futures::{SinkExt, StreamExt};
 use json::object;
+use std::process::Command;
 use std::str::FromStr;
-use std::{process::Command, sync::mpsc::channel};
 use tokio::spawn;
 use tokio_tungstenite::{
     connect_async,
@@ -121,30 +122,22 @@ async fn main() {
 
     let (mut tx, mut receiver) = client.split();
 
-    let (sender, rx) = channel::<Message>();
-    let sender2 = sender.clone();
+    let (mut sender, mut rx) = channel::<Message>(8);
+    let mut sender2 = sender.clone();
 
     println!("Successfully connected");
 
     set_led(LEDCommand::Green);
 
-    let send_loop = async move {
-        loop {
-            match rx.recv() {
-                Ok(msg) => {
-                    let result = tx.send(msg).await;
-                    match result {
-                        Ok(()) => println!("success"),
-                        Err(e) => println!("error {}", e)
-                    }
-                }
-                Err(e) => {
-                    eprintln!("failed to send: {}", e);
-                    break
-                }
+    let send_loop = spawn(async move {
+        while let Some(msg) = rx.next().await {
+            let result = tx.send(msg).await;
+            match result {
+                Ok(()) => println!("success"),
+                Err(e) => println!("error {}", e),
             }
         }
-    };
+    });
 
     let receive_loop = spawn(async move {
         // Receive loop
@@ -155,7 +148,7 @@ async fn main() {
                     let _ = sender.send(Message::Close(a));
                 }
                 Message::Ping(data) => {
-                    match sender.send(Message::Pong(data)) {
+                    match sender.send(Message::Pong(data)).await {
                         // Send a pong in response
                         Ok(()) => (),
                         Err(e) => {
@@ -220,7 +213,7 @@ async fn main() {
                 data: object! {
                     value: current_input
                 }
-            })));
+            }))).await;
             if !result.is_ok() {
                 eprintln!("{}", result.unwrap_err());
                 break;
@@ -228,10 +221,10 @@ async fn main() {
         }
     }
 
-    sender2.send(Message::Close(None)).unwrap();
+    sender2.send(Message::Close(None)).await.unwrap();
 
     println!("connection closed");
 
     receive_loop.await.unwrap_or_default();
-    send_loop.await;
+    send_loop.await.unwrap_or_default();
 }
