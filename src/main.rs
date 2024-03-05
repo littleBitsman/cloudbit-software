@@ -2,6 +2,7 @@ use execute::Execute;
 use futures::channel::mpsc::channel;
 use futures::{SinkExt, StreamExt};
 use json::object;
+use std::panic::set_hook;
 use std::process::Command;
 use std::str::FromStr;
 use tokio::spawn;
@@ -14,6 +15,7 @@ use tokio_tungstenite::{
 };
 use url::Url;
 
+/// commands for LED as an enum
 #[allow(dead_code)]
 enum LEDCommand {
     Red,
@@ -30,6 +32,7 @@ enum LEDCommand {
     Hold,
 }
 
+/// allows formatting an `LEDCommand` into a string
 impl std::fmt::Display for LEDCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -51,13 +54,16 @@ impl std::fmt::Display for LEDCommand {
 
 // UTILS
 
+/// the raw form of `set_led()`, directly passes `str` to `/usr/local/lb/LEDcolor/bin/setColor`
+/// returns success as a boolean
 fn set_led_raw(str: String) -> bool {
     let mut cmd = Command::new("/usr/local/lb/LEDcolor/bin/setColor");
     cmd.arg(str);
     cmd.execute_check_exit_status_code(0).is_ok()
 }
 
-/// set led wow
+/// set led using `LEDCommand`
+/// returns success as a boolean
 fn set_led(arg: LEDCommand) -> bool {
     set_led_raw(arg.to_string())
 }
@@ -78,6 +84,7 @@ fn get_input() -> u8 {
 }
 
 /// set output (as 0x0000 - 0xFFFF)
+/// returns success as a boolean
 fn set_output(value: u16) -> bool {
     let mut cmd = Command::new("/usr/local/lb/DAC/bin/setDAC");
     cmd.arg(format!("{:04x}", value));
@@ -92,12 +99,9 @@ async fn main() {
     set_led(LEDCommand::Teal);
     set_led(LEDCommand::Blink);
 
-    let url = Url::from_str(
-        &std::fs::read_to_string("/usr/local/lb/cloud_client/server_url")
-            // .unwrap_or("ws://chiseled-private-cauliflower.glitch.me/".to_owned())
-            .unwrap_or(DEFAULT_URL.to_string()),
-    )
-    .unwrap_or(Url::from_str(DEFAULT_URL).unwrap());
+    // Parse url at /usr/local/lb/cloud_client/server_url if it exists, use DEFAULT_URL if it doesn't
+    let url = Url::from_str(&std::fs::read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or(DEFAULT_URL.to_string()))
+        .unwrap_or(Url::from_str(DEFAULT_URL).unwrap());
 
     println!(
         "Attempting to connect to {} ({})",
@@ -105,9 +109,9 @@ async fn main() {
         url.host_str().unwrap()
     );
 
-    set_led(LEDCommand::Hold);
+    // initalize variables
 
-    let mut current_input: u8 = 0;
+    let mut current_input: u8 = 0; // current input (0 should be the starting value on any server implementations)
     let request = Request::get(url.as_str())
         // .header("MAC-Address", conf.mac_address.as_str())
         // .header("CB-Id", conf.cb_id.as_str())
@@ -130,6 +134,7 @@ async fn main() {
     println!("Successfully connected");
 
     set_led(LEDCommand::Green);
+    set_led(LEDCommand::Hold);
 
     let send_loop = spawn(async move {
         while let Some(msg) = rx.next().await {
@@ -184,13 +189,9 @@ async fn main() {
                                 0x3 => println!("received hello packet"),
                                 0xF0 => {
                                     // SET LED
-                                    set_led_raw(
-                                        obj["color"]
-                                            .as_str()
-                                            .expect("[dev] bad set led packet")
-                                            .to_lowercase()
-                                            .to_string(),
-                                    );
+                                    if let Some(c) = obj["color"].as_str() {
+                                        set_led_raw(c.to_lowercase());
+                                    }
                                 }
                                 _ => {}
                             }
@@ -205,31 +206,36 @@ async fn main() {
         }
     });
 
+    set_hook(Box::new(move |_| {
+        send_loop.abort();
+        receive_loop.abort();
+    }));
+
+    // Main IO loop
     loop {
         let right_now = get_input();
         if right_now != current_input {
             println!("input {}", right_now);
             println!("input {}", right_now);
             current_input = right_now;
-            let result = sender2
+            sender2
                 .send(Message::Text(json::stringify(object! {
                     opcode: 0x1,
                     data: object! {
                         value: current_input
                     }
                 })))
-                .await;
-            if !result.is_ok() {
-                eprintln!("{}", result.unwrap_err());
-                break;
-            }
+                .await
+                .unwrap();
         }
     }
-
+    /*
+    // Send close 
     sender2.send(Message::Close(None)).await.unwrap();
 
     println!("connection closed");
 
     receive_loop.await.unwrap_or_default();
     send_loop.await.unwrap_or_default();
+    */
 }

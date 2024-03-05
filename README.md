@@ -9,7 +9,7 @@ Firmware for the littleBits CloudBit (which was deprecated) so that it can conne
 Memory usage is around 0.59 MB.
 CPU usage is always less than 5%.
 
-# quick start
+## quick start
 **You need any computer that is able to mount a ext2 or ext3 filesystem, like Linux or a Mac, for any steps following this. Windows has downloadable tools from the Internet to do this, but use them *at your own risk*.**
 **I HEAVILY recommend saving an image of the current state of the drive, using tools like `dd`, before installing.**
 1. mount your cloudBit SD card (the root of the mount will be referenced as `~`)
@@ -31,3 +31,6 @@ CPU usage is always less than 5%.
 
 # license
 cloudbit-software © 2024 by littleBitsman is licensed under CC BY-NC-SA 4.0. To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/4.0/
+
+## notes
+huge thanks to [Hixie](http://github.com/Hixie) who made the [localbit](https://github.com/Hixie/localbit) repository which helped me program this
