@@ -28,3 +28,6 @@ CPU usage is always less than 5%.
 4. run `cargo install cross`
 5. run `cross build --release --target armv5te-unknown-linux-musleabi`
 6. your binary will be found at `./target/armv5te-unknown-linux-musleabi/release/cloud_client`
+
+# license
+cloudbit-software © 2024 by littleBitsman is licensed under CC BY-NC-SA 4.0. To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/4.0/
