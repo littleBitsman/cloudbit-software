@@ -4,7 +4,8 @@ Firmware for the littleBits CloudBit (which was deprecated) so that it can conne
 *If you are looking to set it up for a local server, see the `udp` branch. (NOT TESTED THOROUGHLY)*
 
 ## stats
-(NOTE: UPDATE + FURTHER TESTING NEEDED)
+*(NOTE: UPDATE + FURTHER TESTING NEEDED)*
+
 Memory usage is around 0.59 MB.
 CPU usage is always less than 5%.
 
@@ -25,5 +26,5 @@ CPU usage is always less than 5%.
 2. install the Rust tools for your OS if you don't already have them (`rustup`, `cargo`, etc.)
 3. run `rustup target add armv5te-unknown-linux-musleabi`
 4. run `cargo install cross`
-5. run `cross install --release --target armv5te-unknown-linux-musleabi`
+5. run `cross build --release --target armv5te-unknown-linux-musleabi`
 6. your binary will be found at `./target/armv5te-unknown-linux-musleabi/release/cloud_client`
