@@ -143,15 +143,15 @@ async fn main() {
         while let Some(msg) = rx.next().await {
             let result = tx.send(msg).await;
             match result {
-                Ok(()) => println!("success"),
                 Err(e) => println!("error {}", e),
+                _ => {}
             }
         }
     });
 
     let receive_loop = spawn(async move {
         // Receive loop
-        while let Ok(message) = receiver.next().await.unwrap() {
+        while let Some(Ok(message)) = receiver.next().await {
             match message {
                 Message::Close(a) => {
                     // Got a close message, so send a close message and return
@@ -189,14 +189,7 @@ async fn main() {
                                         .expect("bad output packet from server");
                                     set_output(new);
                                 }
-                                0x3 => println!("received hello packet"),
-                                0xF0 => {
-                                    // SET LED
-                                    if let Some(c) = obj["color"].as_str() {
-                                        set_led_raw(c.to_lowercase());
-                                    }
-                                }
-                                _ => {}
+                                _ => println!("invalid opcode")
                             }
                         }
                         _ => {}
@@ -218,8 +211,6 @@ async fn main() {
     loop {
         let right_now = get_input();
         if right_now != current_input {
-            println!("input {}", right_now);
-            println!("input {}", right_now);
             current_input = right_now;
             sender2
                 .send(Message::Text(json::stringify(object! {
@@ -232,13 +223,4 @@ async fn main() {
                 .unwrap();
         }
     }
-    /*
-    // Send close 
-    sender2.send(Message::Close(None)).await.unwrap();
-
-    println!("connection closed");
-
-    receive_loop.await.unwrap_or_default();
-    send_loop.await.unwrap_or_default();
-    */
 }
