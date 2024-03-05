@@ -1,1 +1,0 @@
-copy cloud_client D:\usr\local\lb\cloud_client\bin
