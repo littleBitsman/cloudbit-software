@@ -1,21 +1,16 @@
-extern crate execute;
-extern crate json;
-
 use std::{
-    fs,
+    fs::read_to_string,
     panic::catch_unwind,
     process::Command,
     thread::{self, sleep},
     time,
 };
-
-use crate::execute::Execute;
-
+use execute::Execute;
 use std::net::UdpSocket;
 
-const LOCAL_ADDR: &'static str = "127.0.0.1:3001";
+const LOCAL_PORT: &'static u16 = &3001;
 // const REMOTE_ADDR: &'static str = "192.168.1.155:3000";
-const REMOTE_ADDR: &'static str = "127.0.0.1:3000";
+// const REMOTE_ADDR: &'static str = "127.0.0.1:3000";
 
 #[allow(dead_code)]
 enum LEDCommand {
@@ -73,12 +68,12 @@ fn set_output(value: u16) -> bool {
     cmd.execute_check_exit_status_code(0).is_ok()
 }
 
-fn start(mac_address: &str) {
+fn start(url: &str, mac_address: &str) {
     let mac_bytes = mac_address.as_bytes().to_owned();
     let mac_bytes_2 = mac_bytes.clone();
 
-    let socket = UdpSocket::bind(LOCAL_ADDR).expect("Failed to bind");
-    socket.connect(REMOTE_ADDR).expect("Failed to connect");
+    let socket = UdpSocket::bind(format!("127.0.0.1:{}", LOCAL_PORT)).expect("Failed to bind");
+    socket.connect(url).expect("Failed to connect");
     socket
         .send(format!("{:?}identify", mac_bytes).as_bytes())
         .expect("[identify] failed to send identify packet");
@@ -126,13 +121,15 @@ fn start(mac_address: &str) {
 }
 
 fn main() {
-    let binding = fs::read_to_string("/var/lb/mac").unwrap_or("000000000000".to_owned());
+    let binding = read_to_string("/var/lb/mac").unwrap_or("000000000000".to_owned());
     let mac_address = binding.split_at(12).0;
+    
+    let url = &read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or("".to_owned());
 
     set_led(LEDCommand::Green);
     set_led(LEDCommand::Blink);
     loop {
-        let result = std::panic::catch_unwind(|| start(mac_address));
+        let result = std::panic::catch_unwind(|| start(url, mac_address));
         match result {
             Ok(()) => {}
             Err(_) => {
