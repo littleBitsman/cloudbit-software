@@ -23,6 +23,7 @@ Expected usage is as follows:
 2. put the FULL URL in the file, including `ws://` or `wss://` at the start - if the URL is invalid the default will automatically be used
 
 **To build manually:**
+*This build method has only been tested on Linux. I recommend using a GitHub Codespace with a fork of this repo if you don't have access to a Linux computer.*
 1. clone the full GitHub repo from `main` (root of this directory will be referenced as `./`)
 2. install the Rust tools for your OS if you don't already have them (`rustup`, `cargo`, etc.)
 3. run `rustup target add armv5te-unknown-linux-musleabi`
