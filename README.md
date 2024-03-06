@@ -1,5 +1,5 @@
 # cloudbit-software
-Firmware for the littleBits CloudBit (which was deprecated) so that it can connect to a server.
+Software for the littleBits cloudBit (which was deprecated) so that it can connect to a server.
 
 *This version is intended to communicate with a local (in your home network) server.* 
 *If you are looking to use the main server, check the `main` branch.*
