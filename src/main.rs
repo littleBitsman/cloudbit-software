@@ -20,6 +20,10 @@ use tokio_tungstenite::{
     },
 };
 use url::Url;
+use mac_address::{
+    MacAddress,
+    get_mac_address
+};
 
 /// commands for LED as an enum
 #[allow(dead_code)]
@@ -97,11 +101,33 @@ fn set_output(value: u16) -> bool {
     cmd.execute_check_exit_status_code(0).is_ok()
 }
 
+fn get_mac_addr() -> MacAddress {
+    let file_res = read_to_string("/var/lb/mac");
+    if file_res.is_ok() {
+        let mac = file_res.unwrap();
+        let iter = mac.split_at(12).0.chars().collect::<Vec<char>>();
+        let mut chars = iter.chunks(2);
+        let mut buf: [u8; 6] = [0; 6];
+        let mut i = 0;
+        while let Some(chars) = chars.next() {
+            let num = u8::from_str_radix(&format!("{}{}", chars[0], chars[1]), 16).unwrap();
+            buf[i] = num;
+            i += 1;
+        }
+        MacAddress::new(buf)
+    } else {
+        get_mac_address().unwrap().unwrap()
+    }
+}
+
 // MAIN LOOP
 #[tokio::main]
 async fn main() {
     set_led(LEDCommand::Teal);
     set_led(LEDCommand::Blink);
+
+    let mac_address = get_mac_addr();
+    println!("{}", mac_address);
 
     // Parse url at /usr/local/lb/cloud_client/server_url if it exists, use DEFAULT_URL if it doesn't
     let url = Url::from_str(&read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or(DEFAULT_URL.to_string()))
@@ -117,7 +143,7 @@ async fn main() {
 
     let mut current_input: u8 = 0; // current input (0 should be the starting value on any server implementations)
     let request = Request::get(url.as_str())
-        // .header("MAC-Address", conf.mac_address.as_str())
+        .header("MAC-Address", mac_address.to_string())
         // .header("CB-Id", conf.cb_id.as_str())
         .header("User-Agent", "littleARCH cloudBit")
         .header("Host", url.host_str().unwrap())
