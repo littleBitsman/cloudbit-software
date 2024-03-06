@@ -74,39 +74,37 @@ fn set_output(value: u16) -> bool {
 }
 
 fn start(mac_address: &str) {
-    let mac_bytes = mac_address.replace(":", "").as_bytes().to_owned();
+    let mac_bytes = mac_address.as_bytes().to_owned();
     let mac_bytes_2 = mac_bytes.clone();
 
     let socket = UdpSocket::bind(LOCAL_ADDR).expect("Failed to bind");
     socket.connect(REMOTE_ADDR).expect("Failed to connect");
     socket
-        .send(format!("{}identify", String::from_utf8_lossy(&mac_bytes)).as_bytes())
+        .send(format!("{:?}identify", mac_bytes).as_bytes())
         .expect("[identify] failed to send identify packet");
 
     let clone = socket.try_clone().unwrap();
 
     thread::spawn(move || loop {
         let _ = catch_unwind(|| {
-            let mut buf = [0; 1000];
+            let mut buf = [0; 15];
             let amount = clone.recv(&mut buf).unwrap();
             let (mac_buf, mut main_buf) = buf.split_at_mut(12);
             main_buf = &mut main_buf[..(amount - 12)];
-            if mac_bytes != mac_buf {
+            if mac_bytes_2 != mac_buf {
                 return println!(
                     "received msg intended for another cloudbit. expected: {:?}, got: {:?}",
-                    String::from_utf8_lossy(&mac_bytes),
+                    String::from_utf8_lossy(&mac_bytes_2),
                     String::from_utf8_lossy(&mac_buf)
                 );
             }
             let main = String::from_utf8_lossy(main_buf);
 
-            let input: Vec<&str> = main.split(":").collect();
-            let cmd = input[0];
-            let (_, args) = input.split_at(1);
+            let (cmd, arg) = main.split_at(1);
 
             match cmd {
-                "output" => {
-                    let num = u16::from_str_radix(args[0], 10).unwrap();
+                "O" => {
+                    let num = u16::from_str_radix(arg, 10).unwrap();
                     set_output(num);
                     println!("received output packet: {}", num);
                 }
@@ -121,19 +119,20 @@ fn start(mac_address: &str) {
         if get_input() != current {
             current = get_input();
             socket
-                .send(format!("{:?}input:{}", mac_bytes_2, current).as_bytes())
+                .send(format!("{:?}I:{}", mac_bytes, current).as_bytes())
                 .expect("[input] failed to send updated input");
         }
     }
 }
 
 fn main() {
-    let mac_address = fs::read_to_string("/var/lb/mac").unwrap_or("00:00:00:00:00:00".to_string());
+    let binding = fs::read_to_string("/var/lb/mac").unwrap_or("000000000000".to_owned());
+    let mac_address = binding.split_at(12).0;
 
     set_led(LEDCommand::Green);
     set_led(LEDCommand::Blink);
     loop {
-        let result = std::panic::catch_unwind(|| start(&mac_address));
+        let result = std::panic::catch_unwind(|| start(mac_address));
         match result {
             Ok(()) => {}
             Err(_) => {
