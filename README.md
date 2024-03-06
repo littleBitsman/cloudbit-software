@@ -33,7 +33,7 @@ Expected usage is as follows:
 ## protocol details
 UDP is a connectionless protocol; as such managing each cloudBit on your own server implementation may be difficult.
 
-Each message in both directions ALWAYS has the first 12 bytes being the respective bytes in the MAC address (as in, bytes 0 and 1 maps to the first component of the MAC address).
+Each message in both directions ALWAYS has the first 12 bytes (UTF-8, for ease of development) being the respective letters in the MAC address (as in, characters 0 and 1 map to the first component of the MAC address).
 
 The bytes are as follows:
 ```
