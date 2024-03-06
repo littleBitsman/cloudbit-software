@@ -127,7 +127,8 @@ async fn main() {
     set_led(LEDCommand::Blink);
 
     let mac_address = get_mac_addr();
-    println!("{}", mac_address);
+    let cb_id_binding = read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
+    let cb_id = cb_id_binding.split_whitespace().next().unwrap();
 
     // Parse url at /usr/local/lb/cloud_client/server_url if it exists, use DEFAULT_URL if it doesn't
     let url = Url::from_str(&read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or(DEFAULT_URL.to_string()))
@@ -144,7 +145,7 @@ async fn main() {
     let mut current_input: u8 = 0; // current input (0 should be the starting value on any server implementations)
     let request = Request::get(url.as_str())
         .header("MAC-Address", mac_address.to_string())
-        // .header("CB-Id", conf.cb_id.as_str())
+        .header("CB-Id", cb_id)
         .header("User-Agent", "littleARCH cloudBit")
         .header("Host", url.host_str().unwrap())
         .header("Connection", "Upgrade")
@@ -165,8 +166,8 @@ async fn main() {
 
     tx.send(Message::text(json::stringify(object! {
         opcode: 0x3,
-        mac_address: read_to_string("/var/lb/mac").unwrap_or("000000000000".to_string()).replace(":", "").split_at(12).0,
-        cb_id: read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string())
+        mac_address: mac_address.to_string(),
+        cb_id: cb_id.to_string()
     }))).await.unwrap();
 
     set_led(LEDCommand::Green);

@@ -10,6 +10,7 @@ server.broadcast = function(d) {
 
 server.on('connection', (c, r) => {
     console.log('connect')
+    console.log(r.headers)
     c.on('message', d => console.log(`d: ${d.toString('utf8')}`))
 })
 
