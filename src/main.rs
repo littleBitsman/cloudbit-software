@@ -1,6 +1,8 @@
 // cloudbit-software © 2024 by littleBitsman is licensed under CC BY-NC-SA 4.0. 
 // To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/4.0/
 
+const DEFAULT_URL: &'static str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
+
 use execute::Execute;
 use futures::channel::mpsc::channel;
 use futures::{SinkExt, StreamExt};
@@ -94,8 +96,6 @@ fn set_output(value: u16) -> bool {
     cmd.arg(format!("{:04x}", value));
     cmd.execute_check_exit_status_code(0).is_ok()
 }
-
-const DEFAULT_URL: &'static str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
 
 // MAIN LOOP
 #[tokio::main]
