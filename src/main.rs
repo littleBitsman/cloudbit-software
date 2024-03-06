@@ -139,7 +139,7 @@ async fn main() {
 
     tx.send(Message::text(json::stringify(object! {
         opcode: 0x3,
-        mac_address: read_to_string("/var/lb/mac").unwrap_or("ERROR_READING_MAC".to_string()),
+        mac_address: read_to_string("/var/lb/mac").unwrap_or("000000000000".to_string()).replace(":", "").split_at(12).0,
         cb_id: read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string())
     }))).await.unwrap();
 
