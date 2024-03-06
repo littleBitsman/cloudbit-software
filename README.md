@@ -36,6 +36,7 @@ UDP is a connectionless protocol; as such managing each cloudBit on your own ser
 Each message in both directions ALWAYS has the first 12 bytes being the respective bytes in the MAC address (as in, bytes 0 and 1 maps to the first component of the MAC address).
 
 The bytes are as follows:
+```
  00 01 02 03 04 05 06 07 08 09 10 11 12 13 14
 +--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
 |             MAC ADDRESS           |IO|VALUE|
@@ -44,6 +45,7 @@ The bytes are as follows:
                                      |    |
 I -> Input, O -> Output -------------'    |
 Input/Output value -----------------------' - A 16-bit unsigned integer is expected for output, the input is always an unsigned 8-bit integer.
+```
 
 If bytes 12-14 do not exist, then the packet can be considered an `IDENTIFY` packet.
 
