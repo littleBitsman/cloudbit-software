@@ -26,3 +26,8 @@ jobs:
       run: cross build --release --target armv5te-unknown-linux-musleabi
     - name: Run tests
       run: cargo test --verbose
+    - name: Push build
+      run: |
+        mv target/armv5te-unknown-linux-musleabi/release/cloud_client ./
+        git commit -a -m "build"
+        git push
