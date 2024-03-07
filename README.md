@@ -31,7 +31,7 @@ CPU usage is always less than 5%.
 6. your binary will be found at `./target/armv5te-unknown-linux-musleabi/release/cloud_client`
 
 ## protocol details
-The opening HTTP request has the `MAC-Address` and `CloudBit-Id` headers. The `MAC-Address` is the cloudBit's MAC address, and the `CloudBit-Id` is some hash of the MAC address. The main server uses these headers to authenticate the request. *In your own implementation for your personal use, you should have a list of MAC addresses, IDs, and their respective mappings.*
+The opening HTTP request has `MAC-Address` and `CloudBit-Id` headers. The `MAC-Address` is the cloudBit's MAC address, and the `CloudBit-Id` is some hash of the MAC address. The main server uses these headers to authenticate the request. *In your own implementation for your personal use, you should have a list of MAC addresses, IDs, and their respective mappings.*
 
 The WebSocket exchanges and expects JSON strings/buffers on the stream. JSON not following the schema below is logged and ignored.
 
