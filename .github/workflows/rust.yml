@@ -29,5 +29,6 @@ jobs:
     - name: Push build
       run: |
         mv target/armv5te-unknown-linux-musleabi/release/cloud_client ./
+        git config user.name GitHub Actions
         git commit -a -m "build"
         git push
