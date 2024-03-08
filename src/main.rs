@@ -101,6 +101,8 @@ fn set_output(value: u16) -> bool {
     cmd.execute_check_exit_status_code(0).is_ok()
 }
 
+/// attempts to read `/var/lb/mac` and parse it into hexadecimal bytes, and then convert to a MAC address.
+/// if that fails, a MAC address is retrieved from the OS
 fn get_mac_addr() -> MacAddress {
     let file_res = read_to_string("/var/lb/mac");
     if file_res.is_ok() {
