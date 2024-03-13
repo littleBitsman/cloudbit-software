@@ -27,12 +27,13 @@ Expected usage is as follows:
 **To build manually:**
 
 *This build method has only been tested on Linux. I recommend using a GitHub Codespace with a fork of this repo if you don't have access to a Linux computer.*
-1. clone the full GitHub repo from `udp` (root of this directory will be referenced as `./`)
-2. install the Rust tools for your OS if you don't already have them (`rustup`, `cargo`, etc.)
-3. run `rustup target add armv5te-unknown-linux-musleabi`
-4. run `cargo install cross`
-5. run `cross build --release --target armv5te-unknown-linux-musleabi`
-6. your binary will be found at `./target/armv5te-unknown-linux-musleabi/release/cloud_client`
+1. install the Rust tools for your OS if you don't already have them (`rustup`, `cargo`, etc.)
+2. clone the full GitHub repo from `udp` (root of this directory will be referenced as `./`)
+4. traverse into the root directory
+5. run `rustup target add armv5te-unknown-linux-musleabi`
+6. run `cargo install cross`
+7. run `cross build --release --target armv5te-unknown-linux-musleabi`
+8. your binary will be found at `./target/armv5te-unknown-linux-musleabi/release/cloud_client`
 
 ## protocol details
 UDP is a connectionless protocol; as such managing each cloudBit on your own server implementation may be difficult.
