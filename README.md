@@ -42,6 +42,8 @@ When the `opcode` is equal to `0x1` (INPUT) or `0x2` (OUTPUT), a `data` object w
 
 Opcode `0x3` (IDENTIFY) is used right after the WebSocket handshake completes and the connection is established. IDENTIFY is sent from the client, but should never be sent from the server. An IDENTIFY payload has a `mac_address` (string) property and a `cb_id` (string) property.
 
+Opcode `0x4` (LED) is used if you ever want to tell the cloudBit to change the LED color at any time. A `commands` property (string) is expected. It can be any combination of `red`, `green`, `blue`, `yellow`, `teal`, `purple` (or `violet`), `white`, `off`, `blink` and `clownbarf`, with whitespace separating each command (newlines are removed).
+
 # license
 cloudbit-software © 2024 by littleBitsman is licensed under CC BY-NC-SA 4.0. To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/4.0/
 
