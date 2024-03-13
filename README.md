@@ -16,11 +16,13 @@ Expected usage is as follows:
 1. mount your cloudBit SD card (the root of the mount will be referenced as `~`)
 2. download the binary `cloud_client`
 3. copy it into `~/usr/local/lb/cloud_client/bin`, renaming the already existing file if you wish to keep it as a backup or overwriting
-4. done!
+4. create a file `~/usr/local/lb/cloud_client/local_server_url`
+5. put the IP address and port of the server into the file; it should be with no newlines and look like `192.168.1.155:3000`
+6. done!
 
-**If you want the binary to use a different server than the default, do the following:**
-1. create a file `~/usr/local/lb/cloud_client/server_url`
-2. put the FULL URL in the file, including `ws://` or `wss://` at the start - if the URL is invalid the default will automatically be used
+**If you want the binary to use a different local than the default (3000), do the following:**
+1. create a file `~/usr/local/lb/cloud_client/local_port`
+2. put any valid port number (1024-65535, anything lower than 1024 is usually restricted)
 
 **To build manually:**
 
