@@ -15,7 +15,7 @@ CPU usage is always less than 5%.
 **I HEAVILY recommend saving an image of the current state of the drive, using tools like `dd`, before installing.**
 1. mount your cloudBit SD card (the root of the mount will be referenced as `~`)
 2. download the binary `cloud_client`
-3. copy it into `~/usr/local/lb/cloud_client/bin`, renaming the already existing file if you wish to keep it as a backup or overwriting
+3. copy it into `~/usr/local/lb/cloud_client/bin` (rename the already existing file if you wish to keep it as a backup)
 4. done!
 
 **If you want the binary to use a different server than the default, do the following:**
