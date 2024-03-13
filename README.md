@@ -15,7 +15,7 @@ Expected usage is as follows:
 **I HEAVILY recommend saving an image of the current state of the drive, using tools like `dd`, before installing.**
 1. mount your cloudBit SD card (the root of the mount will be referenced as `~`)
 2. download the binary `cloud_client`
-3. copy it into `~/usr/local/lb/cloud_client/bin`, renaming the already existing file if you wish to keep it as a backup or overwriting
+3. copy it into `~/usr/local/lb/cloud_client/bin` (rename the already existing file if you wish to keep it as a backup)
 4. create a file `~/usr/local/lb/cloud_client/local_server_url`
 5. put the IP address and port of the server into the file; it should be with no newlines and look like `192.168.1.155:3000`
 6. done!
