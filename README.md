@@ -23,12 +23,13 @@ CPU usage is always less than 5%.
 2. put the FULL URL in the file, including `ws://` or `wss://` at the start - if the URL is invalid the default will automatically be used
 
 **To build manually:**
-1. clone the full GitHub repo from `main` (root of this directory will be referenced as `./`)
-2. install the Rust tools for your OS if you don't already have them (`rustup`, `cargo`, etc.)
-3. run `rustup target add armv5te-unknown-linux-musleabi`
-4. run `cargo install cross`
-5. run `cross build --release --target armv5te-unknown-linux-musleabi`
-6. your binary will be found at `./target/armv5te-unknown-linux-musleabi/release/cloud_client`
+1. install the Rust tools for your OS if you don't already have them (`rustup`, `cargo`, etc.)
+2. clone the full GitHub repo from `main` (root of this directory will be referenced as `./`)
+3. traverse into the root directory of the clone
+4. run `rustup target add armv5te-unknown-linux-musleabi`
+5. run `cargo install cross`
+6. run `cross build --release --target armv5te-unknown-linux-musleabi`
+7. your binary will be found at `./target/armv5te-unknown-linux-musleabi/release/cloud_client`
 
 ## protocol details
 The opening HTTP request has `MAC-Address` and `CloudBit-Id` headers. The `MAC-Address` is the cloudBit's MAC address, and the `CloudBit-Id` is some hash of the MAC address. The main server uses these headers to authenticate the request. *In your own implementation for your personal use, you should have a list of MAC addresses, IDs, and their respective mappings.*
