@@ -20,9 +20,9 @@ Expected usage is as follows:
 5. put the IP address and port of the server into the file; it should be with no newlines and look like `192.168.1.155:3000`
 6. done!
 
-**If you want the binary to use a different local than the default (3000), do the following:**
+**If you want the binary to use a different local port than the default (3000), do the following:**
 1. create a file `~/usr/local/lb/cloud_client/local_port`
-2. put any valid port number (1024-65535, anything lower than 1024 is usually restricted)
+2. put any valid port number (1024-65535, anything lower than 1024 is usually restricted) - invalid numbers are ignored
 
 **To build manually:**
 
