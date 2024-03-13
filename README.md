@@ -29,7 +29,7 @@ Expected usage is as follows:
 *This build method has only been tested on Linux. I recommend using a GitHub Codespace with a fork of this repo if you don't have access to a Linux computer.*
 1. install the Rust tools for your OS if you don't already have them (`rustup`, `cargo`, etc.)
 2. clone the full GitHub repo from `udp` (root of this directory will be referenced as `./`)
-4. traverse into the root directory
+4. traverse into the root directory of the clone
 5. run `rustup target add armv5te-unknown-linux-musleabi`
 6. run `cargo install cross`
 7. run `cross build --release --target armv5te-unknown-linux-musleabi`
