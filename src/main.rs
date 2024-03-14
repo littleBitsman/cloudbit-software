@@ -1,4 +1,4 @@
-// cloudbit-software © 2024 by littleBitsman is licensed under CC BY-NC-SA 4.0. 
+// cloudbit-software © 2024 by littleBitsman is licensed under CC BY-NC-SA 4.0.
 // To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/4.0/
 
 const DEFAULT_URL: &'static str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
@@ -7,6 +7,7 @@ use execute::Execute;
 use futures::channel::mpsc::channel;
 use futures::{SinkExt, StreamExt};
 use json::object;
+use mac_address::{get_mac_address, MacAddress};
 use std::fs::read_to_string;
 use std::panic::set_hook;
 use std::process::Command;
@@ -20,10 +21,6 @@ use tokio_tungstenite::{
     },
 };
 use url::Url;
-use mac_address::{
-    MacAddress,
-    get_mac_address
-};
 
 /// commands for LED as an enum
 #[allow(dead_code)]
@@ -133,8 +130,10 @@ async fn main() {
     let cb_id = cb_id_binding.split_whitespace().next().unwrap();
 
     // Parse url at /usr/local/lb/cloud_client/server_url if it exists, use DEFAULT_URL if it doesn't
-    let url = Url::from_str(&read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or(DEFAULT_URL.to_string()))
-        .unwrap_or(Url::from_str(DEFAULT_URL).unwrap());
+    let url = Url::from_str(
+        &read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or(DEFAULT_URL.to_string()),
+    )
+    .unwrap_or(Url::from_str(DEFAULT_URL).unwrap());
 
     println!(
         "Attempting to connect to {} ({})",
@@ -170,7 +169,9 @@ async fn main() {
         opcode: 0x3,
         mac_address: mac_address.to_string(),
         cb_id: cb_id.to_string()
-    }))).await.unwrap();
+    })))
+    .await
+    .unwrap();
 
     set_led(LEDCommand::Green);
     set_led(LEDCommand::Hold);
@@ -225,7 +226,7 @@ async fn main() {
                                         .expect("bad output packet from server");
                                     set_output(new);
                                 }
-                                _ => println!("invalid opcode")
+                                _ => println!("invalid opcode"),
                             }
                         }
                         _ => {}
