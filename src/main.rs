@@ -102,8 +102,7 @@ fn set_output(value: u16) -> bool {
 /// if that fails, a MAC address is retrieved from the OS
 fn get_mac_addr() -> MacAddress {
     let file_res = read_to_string("/var/lb/mac");
-    if file_res.is_ok() {
-        let mac = file_res.unwrap();
+    if let Ok(mac) = file_res {
         let iter = mac.split_at(12).0.chars().collect::<Vec<char>>();
         let mut chars = iter.chunks(2);
         let mut buf: [u8; 6] = [0; 6];
