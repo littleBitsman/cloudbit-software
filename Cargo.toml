@@ -11,12 +11,12 @@ execute = "0.2.13"
 futures = "0.3.30"
 json = "0.12.4"
 mac_address = "1.1.5"
-#serde = "1.0.197"
-#serde_json = "1.0.114"
+# serde = "1.0.197"
+# serde_json = "1.0.114"
 tokio = { version = "1.36.0", features = ["rt", "macros", "rt-multi-thread"] }
 tokio-tungstenite = { version = "0.21.0", features = ["rustls-tls-webpki-roots", "tokio-rustls"] }
 # openssl = { version = "0.10.64", features = ["vendored"] }
-toml = "0.8.10"
+# toml = "0.8.10"
 url = "2.5.0"
 
 [[bin]]
