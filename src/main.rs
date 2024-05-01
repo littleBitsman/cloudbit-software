@@ -4,9 +4,9 @@ use std::{
     process::Command,
     thread::{self, sleep},
     time,
+    net::UdpSocket
 };
 use execute::Execute;
-use std::net::UdpSocket;
 
 const LOCAL_PORT: &'static u16 = &3001;
 // const REMOTE_ADDR: &'static str = "192.168.1.155:3000";
@@ -124,7 +124,7 @@ fn main() {
     let binding = read_to_string("/var/lb/mac").unwrap_or("000000000000".to_owned());
     let mac_address = binding.split_at(12).0;
     
-    let url = &read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or("".to_owned());
+    let url = &read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or("127.0.0.1:3000".to_owned());
 
     set_led(LEDCommand::Green);
     set_led(LEDCommand::Blink);
