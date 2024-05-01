@@ -126,7 +126,7 @@ async fn main() {
 
     let mac_address = get_mac_addr();
     let cb_id_binding = read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
-    let cb_id = cb_id_binding.split_whitespace().next().unwrap();
+    let cb_id = cb_id_binding.trim();
 
     // Parse url at /usr/local/lb/cloud_client/server_url if it exists, use DEFAULT_URL if it doesn't
     let url = Url::from_str(
@@ -140,7 +140,7 @@ async fn main() {
         url.host_str().unwrap()
     );
 
-    // initalize variables
+    // initialize variables
 
     let mut current_input: u8 = 0; // current input (0 should be the starting value on any server implementations)
     let request = Request::get(url.as_str())
