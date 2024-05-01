@@ -4,14 +4,15 @@
 const DEFAULT_URL: &'static str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
 
 use execute::Execute;
-use futures::channel::mpsc::channel;
-use futures::{SinkExt, StreamExt};
-use json::object;
+use futures::{SinkExt, StreamExt, channel::mpsc::channel};
+use json::{object, stringify, parse, JsonValue};
 use mac_address::{get_mac_address, MacAddress};
-use std::fs::read_to_string;
-use std::panic::set_hook;
-use std::process::Command;
-use std::str::FromStr;
+use std::{
+    fs::read_to_string,
+    panic::set_hook,
+    process::Command,
+    str::FromStr
+};
 use tokio::spawn;
 use tokio_tungstenite::{
     connect_async,
@@ -164,7 +165,7 @@ async fn main() {
 
     println!("Successfully connected");
 
-    tx.send(Message::text(json::stringify(object! {
+    tx.send(Message::text(stringify(object! {
         opcode: 0x3,
         mac_address: mac_address.to_string(),
         cb_id: cb_id.to_string()
@@ -205,7 +206,7 @@ async fn main() {
                 }
                 Message::Text(data) => {
                     println!("{}", data);
-                    let r = json::parse(&data);
+                    let r = parse(&data);
                     if !r.is_ok() {
                         return eprintln!("bad packet from server");
                     }
@@ -214,7 +215,7 @@ async fn main() {
                         return eprintln!("bad packet from server");
                     }
                     match parsed {
-                        json::JsonValue::Object(obj) => {
+                        JsonValue::Object(obj) => {
                             let opcode = obj["opcode"].as_u16().unwrap_or(0);
 
                             match opcode {
@@ -249,7 +250,7 @@ async fn main() {
         if right_now != current_input {
             current_input = right_now;
             sender2
-                .send(Message::text(json::stringify(object! {
+                .send(Message::text(stringify(object! {
                     opcode: 0x1,
                     data: object! {
                         value: current_input
