@@ -2,7 +2,7 @@ use std::{
     fs::read_to_string,
     panic::catch_unwind,
     process::Command,
-    thread::{self, sleep},
+    thread::{spawn, sleep},
     time,
     net::UdpSocket
 };
@@ -77,10 +77,9 @@ fn start(url: &str, mac_address: &str) {
     socket
         .send(format!("{:?}identify", mac_bytes).as_bytes())
         .expect("[identify] failed to send identify packet");
-
     let clone = socket.try_clone().unwrap();
 
-    thread::spawn(move || loop {
+    spawn(move || loop {
         let _ = catch_unwind(|| {
             let mut buf = [0; 15];
             let amount = clone.recv(&mut buf).unwrap();

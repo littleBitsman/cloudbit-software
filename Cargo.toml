@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 execute = "0.2.13"
-json = "0.12.4"
 
 [[bin]]
 name = "cloud_client"
