@@ -1,16 +1,17 @@
+use execute::Execute;
+use mac_address::get_mac_address;
 use std::{
+    fmt::{Display, Formatter, Result as FmtResult},
     fs::read_to_string,
+    net::UdpSocket,
     panic::catch_unwind,
     process::Command,
-    thread::{spawn, sleep},
-    time,
-    net::UdpSocket
+    thread::{sleep, spawn},
+    time, sync::Arc
 };
-use execute::Execute;
 
-const LOCAL_PORT: &'static u16 = &3001;
+const LOCAL_PORT: &'static u16 = &3000;
 // const REMOTE_ADDR: &'static str = "192.168.1.155:3000";
-// const REMOTE_ADDR: &'static str = "127.0.0.1:3000";
 
 #[allow(dead_code)]
 enum LEDCommand {
@@ -28,22 +29,26 @@ enum LEDCommand {
     Hold,
 }
 
-impl std::fmt::Display for LEDCommand {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LEDCommand::Red => write!(f, "red"),
-            LEDCommand::Green => write!(f, "green"),
-            LEDCommand::Blue => write!(f, "blue"),
-            LEDCommand::Purple => write!(f, "purple"),
-            LEDCommand::Violet => write!(f, "purple"),
-            LEDCommand::Teal => write!(f, "teal"),
-            LEDCommand::Yellow => write!(f, "yellow"),
-            LEDCommand::White => write!(f, "white"),
-            LEDCommand::Off => write!(f, "off"),
-            LEDCommand::Clownbarf => write!(f, "clownbarf"),
-            LEDCommand::Blink => write!(f, "blink"),
-            LEDCommand::Hold => write!(f, "hold"),
-        }
+impl Display for LEDCommand {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(
+            f,
+            "{}",
+            match self {
+                LEDCommand::Red => "red",
+                LEDCommand::Green => "green",
+                LEDCommand::Blue => "blue",
+                LEDCommand::Purple => "purple",
+                LEDCommand::Violet => "purple",
+                LEDCommand::Teal => "teal",
+                LEDCommand::Yellow => "yellow",
+                LEDCommand::White => "white",
+                LEDCommand::Off => "off",
+                LEDCommand::Clownbarf => "clownbarf",
+                LEDCommand::Blink => "blink",
+                LEDCommand::Hold => "hold",
+            }
+        )
     }
 }
 
@@ -68,76 +73,83 @@ fn set_output(value: u16) -> bool {
     cmd.execute_check_exit_status_code(0).is_ok()
 }
 
-fn start(url: &str, mac_address: &str) {
-    let mac_bytes = mac_address.as_bytes().to_owned();
+fn start(url: &str) {
+    let mac_bytes = get_mac_address().unwrap().unwrap().bytes().to_vec();
     let mac_bytes_2 = mac_bytes.clone();
 
-    let socket = UdpSocket::bind(format!("127.0.0.1:{}", LOCAL_PORT)).expect("Failed to bind");
-    socket.connect(url).expect("Failed to connect");
+    let socket = Arc::new(UdpSocket::bind(format!("127.0.0.1:{}", LOCAL_PORT)).expect("[socket] failed to bind"));
+    println!("bound to UDP port");
+    socket.connect(url.trim()).expect("[socket] failed to connect");
+    println!("connected");
     socket
-        .send(format!("{:?}identify", mac_bytes).as_bytes())
+        .send(&mac_bytes)
         .expect("[identify] failed to send identify packet");
-    let clone = socket.try_clone().unwrap();
+    let clone = socket.clone();
 
     spawn(move || loop {
-        let _ = catch_unwind(|| {
+        catch_unwind(|| {
             let mut buf = [0; 15];
-            let amount = clone.recv(&mut buf).unwrap();
-            let (mac_buf, mut main_buf) = buf.split_at_mut(12);
-            main_buf = &mut main_buf[..(amount - 12)];
-            if mac_bytes_2 != mac_buf {
+            clone.recv(&mut buf).unwrap();
+
+            let (mac_buf, main_buf) = buf.split_at(6);
+
+            if !mac_bytes_2
+                .iter()
+                .enumerate()
+                .all(|(i, v)| Some(v) == mac_buf.get(i))
+            {
                 return println!(
-                    "received msg intended for another cloudbit. expected: {:?}, got: {:?}",
-                    String::from_utf8_lossy(&mac_bytes_2),
-                    String::from_utf8_lossy(&mac_buf)
+                    "[socket] received msg intended for another cloudbit. expected: {:?}, got: {:?}",
+                    mac_bytes_2, mac_buf
                 );
             }
-            let main = String::from_utf8_lossy(main_buf);
 
-            let (cmd, arg) = main.split_at(1);
+            let (cmd, buf) = (main_buf[0], main_buf.split_at(1).1);
 
             match cmd {
-                "O" => {
-                    let num = u16::from_str_radix(arg, 10).unwrap();
+                79 => {
+                    // 79 = "O"
+                    let num = u16::from_le_bytes([buf[0], buf[1]]);
                     set_output(num);
-                    println!("received output packet: {}", num);
+                    println!("[output] received packet: {}", num);
                 }
-                _ => {}
+                _ => println!("{:?}", buf),
             }
-        });
+        })
+        .ok();
     });
 
     let mut current = 0;
+    let mut msg = mac_bytes.clone();
+    msg.push(73); // "I" = 73
+    msg.push(0);
 
     loop {
         if get_input() != current {
             current = get_input();
+            msg[13] = current;
             socket
-                .send(format!("{:?}I:{}", mac_bytes, current).as_bytes())
+                .send(&msg)
                 .expect("[input] failed to send updated input");
         }
     }
 }
 
 fn main() {
-    let binding = read_to_string("/var/lb/mac").unwrap_or("000000000000".to_owned());
-    let mac_address = binding.split_at(12).0;
-    
-    let url = &read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or("127.0.0.1:3000".to_owned());
+    let url = read_to_string("/usr/local/lb/cloud_client/server_url")
+        .expect("server URL is required since there is no default");
 
     set_led(LEDCommand::Green);
     set_led(LEDCommand::Blink);
     loop {
-        let result = std::panic::catch_unwind(|| start(url, mac_address));
+        let result = catch_unwind(|| start(&url));
         match result {
             Ok(()) => {}
             Err(_) => {
-                println!("error occured; attempting to restart");
+                eprintln!("error occured; attempting to restart");
                 set_led(LEDCommand::Red);
                 set_led(LEDCommand::Blink);
                 sleep(time::Duration::from_secs(2));
-                set_led(LEDCommand::Green);
-                break;
             }
         }
     }

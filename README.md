@@ -49,7 +49,8 @@ The bytes are as follows:
                                      |    |
                                      |    |
 I -> Input, O -> Output -------------'    |
-Input/Output value -----------------------' - A 16-bit unsigned integer is expected for output, the input is always an unsigned 8-bit integer.
+Input/Output value -----------------------' 
+- A 16-bit Little Endian unsigned integer is expected for output, the input is always an unsigned 8-bit integer.
 ```
 
 If bytes 12-14 do not exist, then the packet can be considered an `IDENTIFY` packet.
