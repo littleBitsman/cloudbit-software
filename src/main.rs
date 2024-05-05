@@ -6,8 +6,9 @@ use std::{
     net::UdpSocket,
     panic::catch_unwind,
     process::Command,
+    sync::Arc,
     thread::{sleep, spawn},
-    time, sync::Arc
+    time,
 };
 
 const LOCAL_PORT: &'static u16 = &3000;
@@ -73,33 +74,21 @@ fn set_output(value: u16) -> bool {
     cmd.execute_check_exit_status_code(0).is_ok()
 }
 
-/// attempts to read `/var/lb/mac` and parse it into hexadecimal bytes, and then convert to a MAC address.
-/// if that fails, a MAC address is retrieved from the OS
-fn get_mac_addr() -> MacAddress {
-    let file_res = read_to_string("/var/lb/mac");
-    if let Ok(mac) = file_res {
-        let iter = mac.split_at(12).0.chars().collect::<Vec<char>>();
-        let mut chars = iter.chunks(2);
-        let mut buf: [u8; 6] = [0; 6];
-        let mut i = 0;
-        while let Some(chars) = chars.next() {
-            let num = u8::from_str_radix(&format!("{}{}", chars[0], chars[1]), 16).unwrap();
-            buf[i] = num;
-            i += 1;
-        }
-        MacAddress::new(buf)
-    } else {
-        get_mac_address().unwrap().unwrap()
-    }
-}
-
 fn start(url: &str) {
-    let mac_bytes = get_mac_addr().bytes().to_vec();
+    let mac_bytes = get_mac_address()
+        .expect("Failed to get MAC address")
+        .expect("Failed to get MAC address")
+        .bytes()
+        .to_vec();
     let mac_bytes_2 = mac_bytes.clone();
 
-    let socket = Arc::new(UdpSocket::bind(format!("127.0.0.1:{}", LOCAL_PORT)).expect("[socket] failed to bind"));
+    let socket = Arc::new(
+        UdpSocket::bind(format!("127.0.0.1:{}", LOCAL_PORT)).expect("[socket] failed to bind"),
+    );
     println!("bound to UDP port");
-    socket.connect(url.trim()).expect("[socket] failed to connect");
+    socket
+        .connect(url.trim())
+        .expect("[socket] failed to connect");
     println!("connected");
     socket
         .send(&mac_bytes)
