@@ -4,14 +4,15 @@
 const DEFAULT_URL: &'static str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
 
 use execute::Execute;
-use futures::{SinkExt, StreamExt, channel::mpsc::channel};
-use json::{object, stringify, parse, JsonValue};
-use mac_address::{get_mac_address, MacAddress};
+use futures::{channel::mpsc::channel, SinkExt, StreamExt};
+use json::{object, parse, stringify, JsonValue};
+use mac_address::get_mac_address;
 use std::{
+    fmt::{Display, Formatter, Result as FmtResult},
     fs::read_to_string,
     panic::set_hook,
     process::Command,
-    str::FromStr
+    str::FromStr,
 };
 use tokio::spawn;
 use tokio_tungstenite::{
@@ -41,22 +42,26 @@ enum LEDCommand {
 }
 
 /// allows formatting an `LEDCommand` into a string
-impl std::fmt::Display for LEDCommand {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LEDCommand::Red => write!(f, "red"),
-            LEDCommand::Green => write!(f, "green"),
-            LEDCommand::Blue => write!(f, "blue"),
-            LEDCommand::Purple => write!(f, "purple"),
-            LEDCommand::Violet => write!(f, "violet"),
-            LEDCommand::Teal => write!(f, "teal"),
-            LEDCommand::Yellow => write!(f, "yellow"),
-            LEDCommand::White => write!(f, "white"),
-            LEDCommand::Off => write!(f, "off"),
-            LEDCommand::Clownbarf => write!(f, "clownbarf"),
-            LEDCommand::Blink => write!(f, "blink"),
-            LEDCommand::Hold => write!(f, "hold"),
-        }
+impl Display for LEDCommand {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Red => "red",
+                Self::Green => "green",
+                Self::Blue => "blue",
+                Self::Purple => "purple",
+                Self::Violet => "violet",
+                Self::Teal => "teal",
+                Self::Yellow => "yellow",
+                Self::White => "white",
+                Self::Off => "off",
+                Self::Clownbarf => "clownbarf",
+                Self::Blink => "blink",
+                Self::Hold => "hold",
+            }
+        )
     }
 }
 
@@ -99,33 +104,15 @@ fn set_output(value: u16) -> bool {
     cmd.execute_check_exit_status_code(0).is_ok()
 }
 
-/// attempts to read `/var/lb/mac` and parse it into hexadecimal bytes, and then convert to a MAC address.
-/// if that fails, a MAC address is retrieved from the OS
-fn get_mac_addr() -> MacAddress {
-    let file_res = read_to_string("/var/lb/mac");
-    if let Ok(mac) = file_res {
-        let iter = mac.split_at(12).0.chars().collect::<Vec<char>>();
-        let mut chars = iter.chunks(2);
-        let mut buf: [u8; 6] = [0; 6];
-        let mut i = 0;
-        while let Some(chars) = chars.next() {
-            let num = u8::from_str_radix(&format!("{}{}", chars[0], chars[1]), 16).unwrap();
-            buf[i] = num;
-            i += 1;
-        }
-        MacAddress::new(buf)
-    } else {
-        get_mac_address().unwrap().unwrap()
-    }
-}
-
 // MAIN LOOP
 #[tokio::main]
 async fn main() {
     set_led(LEDCommand::Teal);
     set_led(LEDCommand::Blink);
 
-    let mac_address = get_mac_addr();
+    let mac_address = get_mac_address()
+        .expect("Failed to get MAC address")
+        .expect("Failed to get MAC address");
     let cb_id_binding = read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
     let cb_id = cb_id_binding.trim();
 
@@ -142,7 +129,6 @@ async fn main() {
     );
 
     // initialize variables
-
     let mut current_input: u8 = 0; // current input (0 should be the starting value on any server implementations)
     let request = Request::get(url.as_str())
         .header("MAC-Address", mac_address.to_string())
@@ -206,30 +192,29 @@ async fn main() {
                 }
                 Message::Text(data) => {
                     println!("{}", data);
-                    let r = parse(&data);
-                    if !r.is_ok() {
-                        return eprintln!("bad packet from server");
-                    }
-                    let parsed = r.unwrap();
-                    if !parsed.is_object() {
-                        return eprintln!("bad packet from server");
-                    }
-                    match parsed {
-                        JsonValue::Object(obj) => {
-                            let opcode = obj["opcode"].as_u16().unwrap_or(0);
-
-                            match opcode {
-                                0x2 => {
-                                    // OUTPUT
-                                    let new = obj["data"]["value"]
-                                        .as_u16()
-                                        .expect("bad output packet from server");
-                                    set_output(new);
-                                }
-                                _ => println!("invalid opcode"),
-                            }
+                    if let Ok(parsed) = parse(&data) {
+                        if !parsed.is_object() {
+                            return eprintln!("bad packet from server");
                         }
-                        _ => {}
+                        match parsed {
+                            JsonValue::Object(obj) => {
+                                let opcode = obj["opcode"].as_u16().unwrap_or(0);
+
+                                match opcode {
+                                    0x2 => {
+                                        // OUTPUT
+                                        let new = obj["data"]["value"]
+                                            .as_u16()
+                                            .expect("bad output packet from server");
+                                        set_output(new);
+                                    }
+                                    _ => println!("invalid opcode ({})", opcode),
+                                }
+                            }
+                            _ => {}
+                        }
+                    } else {
+                        eprintln!("bad packet from server")
                     }
                 }
                 _ => {
