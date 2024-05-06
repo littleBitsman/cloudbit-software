@@ -42,18 +42,17 @@ Each message in both directions ALWAYS has the first 12 bytes (UTF-8, for ease o
 
 The bytes are as follows:
 ```
- 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14
-+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-|             MAC ADDRESS           |IO|VALUE|
-+--+--+--+--+--+--+--+--+--+--+--+--+--+--+--+
-                                     |    |
-                                     |    |
-I -> Input, O -> Output -------------'    |
-Input/Output value -----------------------' 
-- A 16-bit Little Endian unsigned integer is expected for output, the input is always an unsigned 8-bit integer.
+ 00 01 02 03 04 05 06 07 08
++--+--+--+--+--+--+--+--+--+
+|    MAC ADDRESS  |IO|VALUE|
++--+--+--+--+--+--+--+--+--+
+                    |    |
+I -> Input, O -> Output  |
+Input/Output value ------'
+Value is always a 16-bit Little Endian unsigned integer, 0-255 for input and 0-65535 (or 0xFFFF) for output
 ```
 
-If bytes 12-14 do not exist, then the packet can be considered an `IDENTIFY` packet.
+If bytes 06-08 do not exist, then the packet can be considered an `IDENTIFY` packet.
 
 # license
 cloudbit-software © 2024 by littleBitsman is licensed under CC BY-NC-SA 4.0. To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/4.0/
