@@ -145,7 +145,7 @@ fn start(url: &str) {
 }
 
 fn main() {
-    let url = read_to_string("/usr/local/lb/cloud_client/server_url")
+    let url = read_to_string("/usr/local/lb/cloud_client/udp_server_url")
         .expect("server URL is required since there is no default");
 
     set_led(LEDCommand::Green);
