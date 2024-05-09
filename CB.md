@@ -1,11 +1,13 @@
 # notes
 
 Wi-Fi HTML page: /srv/http/set-wifi.html
+
 path?: (ip)/set-wifi (check needed)
 
 ***recommended to use a guest network since the credentials are sent over basic HTTP POST without TLS***
 
 location of software: /usr/local/lb
+
 has:
 - ADC (analog-to-digital/input)
 - bit-util (utility scripts)
