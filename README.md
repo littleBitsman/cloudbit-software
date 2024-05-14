@@ -13,6 +13,10 @@ CPU usage is always less than 5%.
 ## quick start
 **You need any computer that is able to mount a ext2 or ext3 filesystem, like Linux or a Mac, for any steps following this. Windows has downloadable tools from the Internet to do this, but use them *at your own risk*.**
 **I HEAVILY recommend saving an image of the current state of the drive, using tools like `dd`, before installing.**
+### recommended method: auto installer
+The auto installer can be found [here](https://github.com/littleBitsman/cloudbit-builder). If you do not wish to download arbitrary executables then you can use the alternate method (prebuilt binary) or manual build below. Instructions for the auto installer can be found in the README of its repository.
+
+### alternate method: prebuilt binary
 1. mount your cloudBit SD card (the root of the mount will be referenced as `~`)
 2. download the binary `cloud_client`
 3. copy it into `~/usr/local/lb/cloud_client/bin` (rename the already existing file if you wish to keep it as a backup)
@@ -22,7 +26,7 @@ CPU usage is always less than 5%.
 1. create a file `~/usr/local/lb/cloud_client/server_url`
 2. put the FULL URL in the file, including `ws://` or `wss://` at the start - if the URL is invalid the default will automatically be used
 
-**To build manually:**
+### manual build (not recommended)
 1. install the Rust tools for your OS if you don't already have them (`rustup`, `cargo`, etc.)
 2. clone the full GitHub repo from `main` (root of this directory will be referenced as `./`)
 3. traverse into the root directory of the clone
