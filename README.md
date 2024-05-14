@@ -13,19 +13,16 @@ Expected usage is as follows:
 ## quick start
 **You need any computer that is able to mount a ext2 or ext3 filesystem, like Linux or a Mac, for any steps following this. Windows has downloadable tools from the Internet to do this, but use them *at your own risk*.**
 **I HEAVILY recommend saving an image of the current state of the drive, using tools like `dd`, before installing.**
+### recommended method: auto installer
+The auto installer can be found [here](https://github.com/littleBitsman/cloudbit-builder). If you do not wish to download arbitrary executables then you can use the alternate method (prebuilt binary) or manual build below. Instructions for the auto installer can be found in the README of its repository.
+
+### alternate method: prebuilt binary
 1. mount your cloudBit SD card (the root of the mount will be referenced as `~`)
 2. download the binary `cloud_client`
 3. copy it into `~/usr/local/lb/cloud_client/bin` (rename the already existing file if you wish to keep it as a backup)
-4. create a file `~/usr/local/lb/cloud_client/local_server_url`
-5. put the IP address and port of the server into the file; it should be with no newlines and look like `192.168.1.155:3000`
-6. done!
+4. done!
 
-**If you want the binary to use a different local port than the default (3000), do the following:**
-1. create a file `~/usr/local/lb/cloud_client/local_port`
-2. put any valid port number (1024-65535, anything lower than 1024 is usually restricted) - invalid numbers are ignored
-
-**To build manually:**
-
+### manual build (not recommended)
 *This build method has only been tested on Linux. I recommend using a GitHub Codespace with a fork of this repo if you don't have access to a Linux computer.*
 1. install the Rust tools for your OS if you don't already have them (`rustup`, `cargo`, etc.)
 2. clone the full GitHub repo from `udp` (root of this directory will be referenced as `./`)
