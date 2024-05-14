@@ -24,9 +24,12 @@ The auto installer can be found [here](https://github.com/littleBitsman/cloudbit
 
 **If you want the binary to use a different server than the default, do the following:**
 1. create a file `~/usr/local/lb/cloud_client/server_url`
-2. put the FULL URL in the file, including `ws://` or `wss://` at the start - if the URL is invalid the default will automatically be used
+2. put the FULL URL in the file, including `ws://` or `wss://` at the start - if the URLis invalid the default will automatically be used
+*note that the auto installer automatically prompts for this*
 
-### manual build (not recommended)
+
+### manual build (for those who know what they are doing)
+*This build method has only been tested on Linux. I recommend using a GitHub Codespace with a fork of this repo if you don't have access to a Linux computer.*
 1. install the Rust tools for your OS if you don't already have them (`rustup`, `cargo`, etc.)
 2. clone the full GitHub repo from `main` (root of this directory will be referenced as `./`)
 3. traverse into the root directory of the clone
