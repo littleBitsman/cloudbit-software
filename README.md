@@ -20,7 +20,9 @@ The auto installer can be found [here](https://github.com/littleBitsman/cloudbit
 1. mount your cloudBit SD card (the root of the mount will be referenced as `~`)
 2. download the binary `cloud_client`
 3. copy it into `~/usr/local/lb/cloud_client/bin` (rename the already existing file if you wish to keep it as a backup)
-4. done!
+4. at `~/usr/local/lb/cloud_client`, create a file named `udp_server_url` and place the URL of the UDP server you want the client to connect to WITHOUT ANY HTTP SCHEMES. it should look like a raw IP address/domain name and port (like `192.168.1.20:3000`)
+5. done!
+*note that all steps are automatically handled by the auto installer, after using it there is no further action required.*
 
 ### manual build (for those who know what they are doing)
 *This build method has only been tested on Linux. I recommend using a GitHub Codespace with a fork of this repo if you don't have access to a Linux computer.*
