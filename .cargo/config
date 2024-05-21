@@ -1,8 +1,0 @@
-[target.armv5te-unknown-linux-gnueabi]
-linker = "arm-linux-gnueabi-gcc"
-
-[target.arm-unknown-linux-gnueabi]
-linker = "arm-linux-gnueabi-gcc"
-
-[target.armv5te-unknown-linux-musleabi]
-linker = "musl-gcc"
