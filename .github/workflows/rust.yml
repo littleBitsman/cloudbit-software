@@ -51,6 +51,7 @@ jobs:
       - name: Get artifacts
         uses: actions/download-artifact@v4.1.7
         with: 
+          name: cloud-client
           path: ./
       - name: Publish
         uses: softprops/action-gh-release@v2
