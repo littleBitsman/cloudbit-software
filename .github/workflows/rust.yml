@@ -2,10 +2,7 @@ name: Rust
 
 on:
   push:
-    branches: [ "main" ]
-    paths: ["src", "src/**"]
-  pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "udp" ]
     paths: ["src", "src/**"]
     
   workflow_dispatch:
