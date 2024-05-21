@@ -23,7 +23,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       with:
-        clean: true
+        ref: main
     - name: Install cross
       run: cargo install cross
     - name: Install toolchain
