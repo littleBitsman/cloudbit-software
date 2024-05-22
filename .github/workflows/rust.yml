@@ -15,7 +15,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: ${{ github.ref_type != 'branch' && github.ref_name == ${{ matrix.version }} }}
     strategy:
       matrix:
         version: ['main', 'udp']
