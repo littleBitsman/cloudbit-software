@@ -32,7 +32,7 @@ jobs:
     - name: Move file
       run: mv ./target/armv5te-unknown-linux-musleabi/release/cloud_client ./cloud_client
     - name: Push build
-      if: ${{ github.ref_name != 'main' && github.ref_name != 'udp' }}
+      if: ${{ github.ref_name == 'main' || github.ref_name == 'udp' }}
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
