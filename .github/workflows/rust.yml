@@ -29,13 +29,8 @@ jobs:
       with:
         target: armv5te-unknown-linux-musleabi
         args: --release
-    - name: Rename file
-      run: mv ./target/armv5te-unknown-linux-musleabi/release/cloud_client ./cloud_client_${{ matrix.version }}
-    - name: Upload output file
-      uses: actions/upload-artifact@v4
-      with: 
-        name: cloud_client_${{ matrix.version }}
-        path: ./cloud_client_${{ matrix.version }}
+    - name: Move file
+      run: mv ./target/armv5te-unknown-linux-musleabi/release/cloud_client ./cloud_client
     - name: Push build
       if: ${{ github.ref_name == 'main' || github.ref_name == 'udp' }}
       run: |
@@ -45,6 +40,13 @@ jobs:
           git commit -a -m "build"
           git push
         } || echo "nothing changed"
+    - name: Rename file
+      run: mv ./cloud_client ./cloud_client_${{ matrix.version }}
+    - name: Upload output file
+      uses: actions/upload-artifact@v4
+      with: 
+        name: cloud_client_${{ matrix.version }}
+        path: ./cloud_client_${{ matrix.version }}
   release:
     runs-on: ubuntu-latest
     if: ${{ github.ref_name != 'main' && github.ref_name != 'udp' }}
