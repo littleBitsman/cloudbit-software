@@ -2,7 +2,6 @@ name: Releases
 
 on:
   push:
-    tags: [ "v*.*.*" ]
     paths: ["src", "src/**"]
 
   workflow_dispatch:
@@ -16,8 +15,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    if: ${{ github.ref_name != 'main' }}
 
     steps:
     - name: Checkout
@@ -37,22 +34,23 @@ jobs:
         name: cloud_client
         path: ./cloud_client
     - name: Push build
+      if: ${{ github.ref_name == 'main' || github.ref_name == 'udp' }}
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         {
           git commit -a -m "build"
           git push
-        } || echo "nothing to commit"
+        } || echo "nothing changed"
   release:
     runs-on: ubuntu-latest
-    if: github.ref_name
+    if: ${{ github.ref_name != 'main' && github.ref_name != 'udp' }}
     needs: build
     steps: 
       - name: Get artifacts
         uses: actions/download-artifact@v4.1.7
         with: 
-          name: cloud-client
+          name: cloud_client
           path: ./
       - name: Publish
         uses: softprops/action-gh-release@v2
