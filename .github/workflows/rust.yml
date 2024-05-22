@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RELEASE: ${{ github.ref_name != 'main' && github.ref_name != 'udp' }}
 
 permissions:
   contents: write
@@ -32,7 +33,7 @@ jobs:
     - name: Move file
       run: mv ./target/armv5te-unknown-linux-musleabi/release/cloud_client ./cloud_client
     - name: Push build
-      if: ${{ github.ref_name == 'main' || github.ref_name == 'udp' }}
+      if: ${{ !env.RELEASE }}
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -41,15 +42,17 @@ jobs:
           git push
         } || echo "nothing changed"
     - name: Rename file
+      if: env.release
       run: mv ./cloud_client ./cloud_client_${{ matrix.version }}
     - name: Upload output file
+      if: env.release
       uses: actions/upload-artifact@v4
       with: 
         name: cloud_client_${{ matrix.version }}
         path: ./cloud_client_${{ matrix.version }}
   release:
     runs-on: ubuntu-latest
-    if: ${{ github.ref_name != 'main' && github.ref_name != 'udp' }}
+    if: env.RELEASE 
     needs: build
     steps: 
       - name: Make artifacts directory
