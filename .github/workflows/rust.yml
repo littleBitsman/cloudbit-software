@@ -24,12 +24,11 @@ jobs:
       uses: actions/checkout@v4
       with:
         ref: main
-    - name: Install cross
-      run: cargo install cross
-    - name: Install toolchain
-      run: rustup target add armv5te-unknown-linux-musleabi
     - name: Build
-      run: cross build --release --target armv5te-unknown-linux-musleabi
+      uses: houseabsolute/actions-rust-cross@v0
+      with:
+        target: armv5te-unknown-linux-musleabi
+        args: --release
     - name: Rename file
       run: mv ./target/armv5te-unknown-linux-musleabi/release/cloud_client ./cloud_client
     - name: Upload output file
