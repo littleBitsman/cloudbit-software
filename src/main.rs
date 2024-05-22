@@ -12,7 +12,7 @@ use std::{
     fs::read_to_string,
     panic::set_hook,
     process::Command,
-    str::FromStr,
+    str::FromStr
 };
 use tokio::spawn;
 use tokio_tungstenite::{
@@ -20,7 +20,7 @@ use tokio_tungstenite::{
     tungstenite::{
         handshake::client::{generate_key, Request},
         Message,
-    },
+    }
 };
 use url::Url;
 
@@ -38,7 +38,7 @@ enum LEDCommand {
     Off,
     Clownbarf,
     Blink,
-    Hold,
+    Hold
 }
 
 /// allows formatting an `LEDCommand` into a string
@@ -59,7 +59,7 @@ impl Display for LEDCommand {
                 Self::Off => "off",
                 Self::Clownbarf => "clownbarf",
                 Self::Blink => "blink",
-                Self::Hold => "hold",
+                Self::Hold => "hold"
             }
         )
     }
@@ -217,9 +217,7 @@ async fn main() {
                         eprintln!("bad packet from server")
                     }
                 }
-                _ => {
-                    eprintln!("unknown content")
-                }
+                _ => eprintln!("unknown content")
             }
         }
     });
