@@ -52,7 +52,7 @@ jobs:
         path: ./cloud_client_${{ matrix.version }}
   release:
     runs-on: ubuntu-latest
-    if: env.RELEASE 
+    if: ${{ env.RELEASE }}
     needs: build
     steps: 
       - name: Make artifacts directory
