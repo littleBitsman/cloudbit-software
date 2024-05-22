@@ -24,7 +24,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       with:
-        ref: ${{ matrix,version }}
+        ref: ${{ matrix.version }}
     - name: Build
       uses: houseabsolute/actions-rust-cross@v0
       with:
