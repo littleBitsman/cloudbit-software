@@ -21,9 +21,7 @@ jobs:
     - name: Install audit tools
       run: cargo install cargo-audit --features=fix
     - name: Audit
-      id: step-audit
       continue-on-error: true
       run: cargo audit
     - name: Fix vulnerabilities
-      if: ${{ failure() && steps.step-audit.outcome == 'failure' }}
       run: cargo audit fix
