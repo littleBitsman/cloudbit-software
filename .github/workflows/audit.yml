@@ -18,6 +18,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
     - name: Install audit tools
-      run: cargo install cargo-audit
+      run: cargo install cargo-audit --features=fix
     - name: Audit
+      id: step-audit
       run: cargo audit
+    - name: Fix vulnerabilities
+      if: ${{ steps.step-audit.conclusion == "success" }}
+      run: cargo audit fix
