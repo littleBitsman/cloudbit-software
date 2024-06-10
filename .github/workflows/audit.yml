@@ -25,5 +25,5 @@ jobs:
       continue-on-error: true
       run: cargo audit
     - name: Fix vulnerabilities
-      if: ${{ steps.step-audit.conclusion == 'success' }}
+      if: ${{ steps.step-audit.outcome == 'failure' }}
       run: cargo audit fix
