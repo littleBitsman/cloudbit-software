@@ -2,9 +2,7 @@
 name = "cloudbit_software"
 version = "1.0.0"
 edition = "2021"
-license = "CC-BY-NC-SA-4.0"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "GPL-3.0-or-later"
 
 [dependencies]
 execute = "0.2.13"
