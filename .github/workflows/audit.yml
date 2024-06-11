@@ -2,9 +2,9 @@ name: Audit
 
 on:
   push:
-    
+    paths: ["src/**/*", "Cargo.toml"]
   pull_request:
-
+    paths: ["src/**/*", "Cargo.toml"]
   workflow_dispatch:
 
 env:
