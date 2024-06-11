@@ -188,10 +188,8 @@ async fn main() {
     set_led(LEDCommand::Hold);
 
     let send_loop = spawn(async move {
-        loop {
-            if let Some(msg) = rx.next().await {
-                tx.send(msg).await.unwrap()
-            }
+        while let Some(msg) = rx.next().await {
+            tx.send(msg).await.unwrap()
         }
     });
 
@@ -227,11 +225,11 @@ async fn main() {
                                     0x2 => {
                                         // OUTPUT
                                         let new = obj["data"]["value"]
-                                            .as_u8()
-                                            .expect("bad output packet from server") as f64 / 256.0 * 65535.0;
-                                        set_output(new as u16);
+                                            .as_u16()
+                                            .expect("bad output packet from server");
+                                        set_output(new);
                                     }
-                                    _ => eprintln!("invalid opcode ({})", opcode),
+                                    _ => println!("invalid opcode ({})", opcode),
                                 }
                             }
                             _ => {}
