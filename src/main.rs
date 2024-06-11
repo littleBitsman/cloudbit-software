@@ -189,11 +189,7 @@ async fn main() {
 
     let send_loop = spawn(async move {
         while let Some(msg) = rx.next().await {
-            let result = tx.send(msg).await;
-            match result {
-                Err(e) => println!("error {}", e),
-                _ => {}
-            }
+            tx.send(msg).await.unwrap()
         }
     });
 
@@ -229,11 +225,11 @@ async fn main() {
                                     0x2 => {
                                         // OUTPUT
                                         let new = obj["data"]["value"]
-                                            .as_u16()
-                                            .expect("bad output packet from server");
-                                        set_output(new);
+                                            .as_u8()
+                                            .expect("bad output packet from server") as f64 / 256.0 * 65535.0;
+                                        set_output(new as u16);
                                     }
-                                    _ => println!("invalid opcode ({})", opcode),
+                                    _ => eprintln!("invalid opcode ({})", opcode),
                                 }
                             }
                             _ => {}
@@ -255,17 +251,19 @@ async fn main() {
     // Main IO loop
     loop {
         let right_now = get_input();
-        if right_now != current_input {
+        if current_input != right_now {
             current_input = right_now;
-            sender2
-                .send(Message::text(stringify(object! {
-                    opcode: 0x1,
-                    data: object! {
-                        value: current_input
-                    }
-                })))
-                .await
-                .unwrap();
+            if current_input.abs_diff(right_now) > 4 { // give a ~4 unit margin of error (the ADC is HORRIBLY inaccurate)
+                sender2
+                    .send(Message::text(stringify(object! {
+                        opcode: 0x1,
+                        data: object! {
+                            value: current_input
+                        }
+                    })))
+                    .await
+                    .unwrap();
+            }
         }
     }
 }
