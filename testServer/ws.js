@@ -27,3 +27,11 @@ process.stdin.on('data', d => {
 
     console.log('ba')
 })
+
+const udp = require('dgram').createSocket('udp4')
+
+udp.bind(3000, 'localhost')
+
+udp.on('message', () => {
+
+})
