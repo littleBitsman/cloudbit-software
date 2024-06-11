@@ -188,8 +188,10 @@ async fn main() {
     set_led(LEDCommand::Hold);
 
     let send_loop = spawn(async move {
-        while let Some(msg) = rx.next().await {
-            tx.send(msg).await.unwrap()
+        loop {
+            if let Some(msg) = rx.next().await {
+                tx.send(msg).await.unwrap()
+            }
         }
     });
 
