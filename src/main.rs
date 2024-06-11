@@ -189,7 +189,11 @@ async fn main() {
 
     let send_loop = spawn(async move {
         while let Some(msg) = rx.next().await {
-            tx.send(msg).await.unwrap()
+            let result = tx.send(msg).await;
+            match result {
+                Err(e) => println!("error {}", e),
+                _ => {}
+            }
         }
     });
 
@@ -253,7 +257,7 @@ async fn main() {
         let right_now = get_input();
         if current_input != right_now {
             current_input = right_now;
-            if current_input.abs_diff(right_now) > 4 { // give a ~4 unit margin of error (the ADC is HORRIBLY inaccurate)
+            if current_input.abs_diff(right_now) > 4 {
                 sender2
                     .send(Message::text(stringify(object! {
                         opcode: 0x1,
