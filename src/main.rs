@@ -9,7 +9,7 @@ use json::{object, parse, stringify, JsonValue};
 use mac_address::get_mac_address;
 use once_cell::sync::Lazy;
 use std::{
-    fmt::{Display, Formatter, Result as FmtResult}, fs::read_to_string, os::unix::net::UnixDatagram, panic::set_hook, process::Command, str::FromStr
+    fmt::{Display, Formatter, Result as FmtResult}, fs::{read_to_string, write, File}, io::{Read, Write}, net::Shutdown, os::unix::net::UnixDatagram, panic::set_hook, process::Command, str::FromStr
 };
 use tokio::spawn;
 use tokio_tungstenite::{
@@ -248,8 +248,15 @@ async fn main() {
     });
 
     set_hook(Box::new(move |v| {
+        let mut file = File::options().create(true).write(true).open("/var/lb/cloud_client_errs").unwrap();
+        let mut buf = String::new();
+        file.read_to_string(&mut buf).unwrap();
+        buf += &(String::from("\n") + &v.to_string());
+        file.write_all(buf.as_bytes()).unwrap();
         send_loop.abort();
         receive_loop.abort();
+        while let Err(_) = ADC_SOCKET.shutdown(Shutdown::Both) {}
+        while let Err(_) = DAC_SOCKET.shutdown(Shutdown::Both) {}
         println!("{}", v.to_string())
     }));
 
