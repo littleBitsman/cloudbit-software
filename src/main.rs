@@ -216,7 +216,7 @@ async fn main() {
                     }
                 }
                 Message::Text(data) => {
-                    println!("{}", data);
+                    eprintln!("{}", data);
                     if let Ok(parsed) = parse(&data) {
                         if !parsed.is_object() {
                             return eprintln!("bad packet from server");
@@ -247,9 +247,10 @@ async fn main() {
         }
     });
 
-    set_hook(Box::new(move |_| {
+    set_hook(Box::new(move |v| {
         send_loop.abort();
         receive_loop.abort();
+        println!("{}", v.to_string())
     }));
 
     // Main IO loop
