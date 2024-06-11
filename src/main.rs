@@ -255,19 +255,17 @@ async fn main() {
     // Main IO loop
     loop {
         let right_now = get_input();
-        if current_input != right_now {
+        if current_input.abs_diff(right_now) > 4 {
             current_input = right_now;
-            if current_input.abs_diff(right_now) > 4 {
-                sender2
-                    .send(Message::text(stringify(object! {
-                        opcode: 0x1,
-                        data: object! {
-                            value: current_input
-                        }
-                    })))
-                    .await
-                    .unwrap();
-            }
+            sender2
+                .send(Message::text(stringify(object! {
+                    opcode: 0x1,
+                    data: object! {
+                        value: current_input
+                    }
+                })))
+                .await
+                .unwrap();
         }
     }
 }
