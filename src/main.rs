@@ -147,7 +147,7 @@ async fn main() {
     )
     .unwrap_or(Url::from_str(DEFAULT_URL).unwrap());
 
-    println!(
+    eprintln!(
         "Attempting to connect to {} ({})",
         url.to_string(),
         url.host_str().unwrap()
@@ -174,7 +174,7 @@ async fn main() {
     let (mut sender, mut rx) = channel::<Message>(8);
     let mut sender2 = sender.clone();
 
-    println!("Successfully connected");
+    eprintln!("Successfully connected");
 
     tx.send(Message::text(stringify(object! {
         opcode: 0x3,
@@ -191,7 +191,7 @@ async fn main() {
         while let Some(msg) = rx.next().await {
             let result = tx.send(msg).await;
             match result {
-                Err(e) => println!("error {}", e),
+                Err(e) => eprintln!("error {}", e),
                 _ => {}
             }
         }
@@ -233,7 +233,7 @@ async fn main() {
                                             .expect("bad output packet from server");
                                         set_output(new);
                                     }
-                                    _ => println!("invalid opcode ({})", opcode),
+                                    _ => eprintln!("invalid opcode ({})", opcode),
                                 }
                             }
                             _ => {}
