@@ -255,7 +255,7 @@ async fn main() {
     // Main IO loop
     loop {
         let right_now = get_input();
-        if current_input.abs_diff(right_now) > 4 {
+        if right_now != current_input {
             current_input = right_now;
             sender2
                 .send(Message::text(stringify(object! {
