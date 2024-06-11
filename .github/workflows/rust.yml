@@ -41,7 +41,6 @@ jobs:
           git push
         } || echo "nothing changed"
     - name: Upload output file
-      if: ${{ github.ref_name != 'main' && github.ref_name != 'udp' }}
       uses: actions/upload-artifact@v4
       with: 
         name: cloud_client_${{ matrix.version }}
