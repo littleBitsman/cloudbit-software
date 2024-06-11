@@ -9,7 +9,7 @@ use json::{object, parse, stringify, JsonValue};
 use mac_address::get_mac_address;
 use once_cell::sync::Lazy;
 use std::{
-    fmt::{Display, Formatter, Result as FmtResult}, fs::{read_to_string, write, File}, io::{Read, Write}, net::Shutdown, os::unix::net::UnixDatagram, panic::set_hook, process::Command, str::FromStr
+    fmt::{Display, Formatter, Result as FmtResult}, fs::{read_to_string, File}, io::{Read, Write}, net::Shutdown, os::unix::net::UnixDatagram, panic::set_hook, process::Command, str::FromStr
 };
 use tokio::spawn;
 use tokio_tungstenite::{
