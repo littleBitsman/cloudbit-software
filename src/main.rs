@@ -7,23 +7,34 @@ const INPUT_DELTA_THRESHOLD: u8 = 3;
 
 use execute::Execute;
 use futures::{channel::mpsc::channel, SinkExt, StreamExt};
-use json::{object, parse, stringify, JsonValue};
 use mac_address::get_mac_address;
+use once_cell::sync::Lazy;
+use serde::Serialize;
+use serde_json::{from_str, json, to_string, Value as JsonValue};
 use std::{
-    fmt::{Display, Formatter, Result as FmtResult}, fs::read_to_string, panic::set_hook, process::Command, str::FromStr, time::Duration
+    fs::read_to_string,
+    panic::set_hook,
+    process::{id as get_pid, Command},
+    str::FromStr,
+    time::Duration,
 };
+use sysinfo::{Pid, System};
 use tokio::{spawn, time::sleep};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{
         handshake::client::{generate_key, Request},
         Message,
-    }
+    },
 };
 use url::Url;
 
+const SYSINFO: Lazy<System> = Lazy::new(|| System::new_all());
+const PID: Lazy<Pid> = Lazy::new(|| Pid::from_u32(get_pid()));
+
 /// commands for LED as an enum
 #[allow(dead_code)]
+#[derive(Clone, Copy)]
 enum LEDCommand {
     Red,
     Green,
@@ -36,34 +47,62 @@ enum LEDCommand {
     Off,
     Clownbarf,
     Blink,
-    Hold
+    Hold,
 }
 
-/// allows formatting an `LEDCommand` into a string
-impl Display for LEDCommand {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Red => "red",
-                Self::Green => "green",
-                Self::Blue => "blue",
-                Self::Purple => "purple",
-                Self::Violet => "violet",
-                Self::Teal => "teal",
-                Self::Yellow => "yellow",
-                Self::White => "white",
-                Self::Off => "off",
-                Self::Clownbarf => "clownbarf",
-                Self::Blink => "blink",
-                Self::Hold => "hold"
-            }
-        )
+impl TryFrom<String> for LEDCommand {
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        match value.to_lowercase().as_str() {
+            "red" => Ok(Self::Red),
+            "green" => Ok(Self::Green),
+            "blue" => Ok(Self::Blue),
+            "purple" => Ok(Self::Purple),
+            "violet" => Ok(Self::Violet),
+            "teal" => Ok(Self::Teal),
+            "yellow" => Ok(Self::Yellow),
+            "white" => Ok(Self::White),
+            "off" => Ok(Self::Off),
+            "clownbarf" => Ok(Self::Clownbarf),
+            "blink" => Ok(Self::Blink),
+            "hold" => Ok(Self::Hold),
+            _ => Err(()),
+        }
+    }
+
+    type Error = ();
+}
+
+impl Into<&str> for LEDCommand {
+    fn into(self) -> &'static str {
+        match self {
+            Self::Red => "red",
+            Self::Green => "green",
+            Self::Blue => "blue",
+            Self::Purple => "purple",
+            Self::Violet => "violet",
+            Self::Teal => "teal",
+            Self::Yellow => "yellow",
+            Self::White => "white",
+            Self::Off => "off",
+            Self::Clownbarf => "clownbarf",
+            Self::Blink => "blink",
+            Self::Hold => "hold",
+        }
+    }
+}
+
+impl ToString for LEDCommand {
+    fn to_string(&self) -> String {
+        let s: &str = (*self).into();
+        s.to_string()
     }
 }
 
 // UTILS
+
+fn stringify(obj: impl Sized + Serialize) -> String {
+    to_string(&obj).unwrap()
+}
 
 /// the raw form of `set_led()`, directly passes `str` to `/usr/local/lb/LEDcolor/bin/setColor`
 /// returns success as a boolean
@@ -149,11 +188,14 @@ async fn main() {
 
     eprintln!("Successfully connected");
 
-    tx.send(Message::text(stringify(object! {
-        opcode: 0x3,
-        mac_address: mac_address.to_string(),
-        cb_id: cb_id.to_string()
-    })))
+    tx.send(Message::text(
+        json!({
+            "opcode": 0x3,
+            "mac_address": mac_address.to_string(),
+            "cb_id": cb_id.to_string()
+        })
+        .to_string(),
+    ))
     .await
     .unwrap();
 
@@ -190,23 +232,81 @@ async fn main() {
                 }
                 Message::Text(data) => {
                     eprintln!("{}", data);
-                    if let Ok(parsed) = parse(&data) {
+                    if let Ok(parsed) = from_str::<JsonValue>(&data) {
                         if !parsed.is_object() {
                             return eprintln!("bad packet from server");
                         }
                         match parsed {
-                            JsonValue::Object(obj) => {
-                                let opcode = obj["opcode"].as_u16().unwrap_or(0);
+                            JsonValue::Object(ref obj) => {
+                                if let Some(opcode) = obj["opcode"].as_u64() {
+                                    match opcode {
+                                        0x2 => {
+                                            // OUTPUT
+                                            if let Some(new) = obj["data"]["value"].as_u64() {
+                                                set_output(new as u16);
+                                            } else {
+                                                eprintln!(
+                                                    "bad output packet: {}",
+                                                    to_string(&obj).unwrap()
+                                                )
+                                            }
+                                        }
+                                        // Any numbers that match 0xFX where X is any digit is a developer
+                                        // opcode (LED set, button status, etc.)
 
-                                match opcode {
-                                    0x2 => {
-                                        // OUTPUT
-                                        let new = obj["data"]["value"]
-                                            .as_u16()
-                                            .expect("bad output packet from server");
-                                        set_output(new);
+                                        // Set LED
+                                        0xF0 => {
+                                            if let Some(command) = obj["led_command"].as_str() {
+                                                if let Ok(led) =
+                                                    LEDCommand::try_from(command.to_string())
+                                                {
+                                                    set_led(led);
+                                                } else {
+                                                    eprintln!(
+                                                        "bad set LED packet: {}",
+                                                        stringify(parsed)
+                                                    )
+                                                }
+                                            } else {
+                                                eprintln!(
+                                                    "bad set LED packet: {}",
+                                                    stringify(parsed)
+                                                )
+                                            }
+                                        }
+
+                                        // TODO #4 Get button (it is never sent normally)
+                                        0xF1 => {}
+
+                                        // Get system stats (e.g., memory usage, CPU usage)
+                                        0xF3 => {
+                                            let mut sysinfo = SYSINFO;
+                                            sysinfo.refresh_cpu();
+                                            sysinfo.refresh_memory();
+                                            sysinfo.refresh_process(*PID);
+
+                                            let process = sysinfo.process(*PID).unwrap();
+                                            let cpu = process.cpu_usage();
+                                            let mem_bytes = process.memory();
+                                            let total_mem = sysinfo.total_memory();
+                                            let mem_percent = mem_bytes / total_mem;
+
+                                            // Opcode 0xF4 is system stats (RETURNED from 0xF3)
+                                            sender
+                                                .send(Message::text(stringify(json!({
+                                                    "opcode": 0xF4,
+                                                    "stats": {
+                                                        "cpu_usage": cpu,
+                                                        "memory_usage": mem_bytes,
+                                                        "total_memory": total_mem,
+                                                        "memory_usage_percent": mem_percent
+                                                    }
+                                                }))))
+                                                .await
+                                                .unwrap();
+                                        }
+                                        _ => eprintln!("invalid opcode: {}", opcode),
                                     }
-                                    _ => eprintln!("invalid opcode ({})", opcode),
                                 }
                             }
                             _ => {}
@@ -215,7 +315,7 @@ async fn main() {
                         eprintln!("bad packet from server")
                     }
                 }
-                _ => eprintln!("unknown content")
+                _ => eprintln!("unknown content"),
             }
         }
     });
@@ -232,12 +332,12 @@ async fn main() {
         if current_input.abs_diff(right_now) > INPUT_DELTA_THRESHOLD {
             current_input = right_now;
             sender2
-                .send(Message::text(stringify(object! {
-                    opcode: 0x1,
-                    data: object! {
-                        value: current_input
+                .send(Message::text(stringify(json!({
+                    "opcode": 0x1,
+                    "data": {
+                        "value": current_input
                     }
-                })))
+                }))))
                 .await
                 .unwrap();
         }
