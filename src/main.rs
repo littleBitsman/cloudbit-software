@@ -10,9 +10,9 @@ use futures::{channel::mpsc::channel, SinkExt, StreamExt};
 use json::{object, parse, stringify, JsonValue};
 use mac_address::get_mac_address;
 use std::{
-    fmt::{Display, Formatter, Result as FmtResult}, fs::read_to_string, panic::set_hook, process::Command, str::FromStr
+    fmt::{Display, Formatter, Result as FmtResult}, fs::read_to_string, panic::set_hook, process::Command, str::FromStr, time::Duration
 };
-use tokio::spawn;
+use tokio::{spawn, time::sleep};
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{
@@ -229,19 +229,18 @@ async fn main() {
     // Main IO loop
     loop {
         let right_now = get_input();
-        if current_input != right_now {
+        if current_input.abs_diff(right_now) > INPUT_DELTA_THRESHOLD {
             current_input = right_now;
-            if current_input.abs_diff(right_now) > INPUT_DELTA_THRESHOLD {
-                sender2
-                    .send(Message::text(stringify(object! {
-                        opcode: 0x1,
-                        data: object! {
-                            value: current_input
-                        }
-                    })))
-                    .await
-                    .unwrap();
-            }
+            sender2
+                .send(Message::text(stringify(object! {
+                    opcode: 0x1,
+                    data: object! {
+                        value: current_input
+                    }
+                })))
+                .await
+                .unwrap();
         }
+        sleep(Duration::from_millis(10)).await;
     }
 }
