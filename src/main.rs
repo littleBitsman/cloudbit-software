@@ -3,6 +3,8 @@
 
 const DEFAULT_URL: &'static str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
 
+const INPUT_DELTA_THRESHOLD: u8 = 3;
+
 use execute::Execute;
 use futures::{channel::mpsc::channel, SinkExt, StreamExt};
 use json::{object, parse, stringify, JsonValue};
@@ -227,17 +229,19 @@ async fn main() {
     // Main IO loop
     loop {
         let right_now = get_input();
-        if current_input.abs_diff(right_now) > 4 {
+        if current_input != right_now {
             current_input = right_now;
-            sender2
-                .send(Message::text(stringify(object! {
-                    opcode: 0x1,
-                    data: object! {
-                        value: current_input
-                    }
-                })))
-                .await
-                .unwrap();
+            if current_input.abs_diff(right_now) > INPUT_DELTA_THRESHOLD {
+                sender2
+                    .send(Message::text(stringify(object! {
+                        opcode: 0x1,
+                        data: object! {
+                            value: current_input
+                        }
+                    })))
+                    .await
+                    .unwrap();
+            }
         }
     }
 }
