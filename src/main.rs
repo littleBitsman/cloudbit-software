@@ -13,6 +13,7 @@ use serde::Serialize;
 use serde_json::{from_str, json, to_string, Value as JsonValue};
 use std::{
     fs::read_to_string,
+    io::ErrorKind as IoErrorKind,
     panic::set_hook,
     process::{id as get_pid, Command},
     str::FromStr,
@@ -206,8 +207,13 @@ async fn main() {
         while let Some(msg) = rx.next().await {
             let result = tx.send(msg).await;
             match result {
-                Err(Error::AlreadyClosed) | Err(Error::ConnectionClosed) => {
+                Err(Error::AlreadyClosed | Error::ConnectionClosed) => {
                     panic!("connection closed, rebooting to attempt reconnection")
+                }
+                Err(Error::Io(err)) => {
+                    if err.kind() == IoErrorKind::BrokenPipe {
+                        panic!("connection closed, rebooting to attempt reconnection")
+                    }
                 }
                 Err(e) => eprintln!("error on WebSocket: {}", e),
                 _ => {}
