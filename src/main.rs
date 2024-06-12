@@ -3,7 +3,7 @@
 
 const DEFAULT_URL: &'static str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
 
-const INPUT_DELTA_THRESHOLD: u8 = 3;
+const INPUT_DELTA_THRESHOLD: u8 = 2;
 
 use execute::Execute;
 use futures::{channel::mpsc::channel, SinkExt, StreamExt};
