@@ -248,16 +248,11 @@ async fn main() {
     });
 
     set_hook(Box::new(move |v| {
-        let mut file = File::options().create(true).write(true).open("/var/lb/cloud_client_errs").unwrap();
-        let mut buf = String::new();
-        file.read_to_string(&mut buf).unwrap();
-        buf += &(String::from("\n") + &v.to_string());
-        file.write_all(buf.as_bytes()).unwrap();
+        println!("{}", v.to_string());
         send_loop.abort();
         receive_loop.abort();
         while let Err(_) = ADC_SOCKET.shutdown(Shutdown::Both) {}
         while let Err(_) = DAC_SOCKET.shutdown(Shutdown::Both) {}
-        println!("{}", v.to_string())
     }));
 
     // Main IO loop
