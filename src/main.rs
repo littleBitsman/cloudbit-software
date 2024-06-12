@@ -7,9 +7,8 @@ use execute::Execute;
 use futures::{channel::mpsc::channel, SinkExt, StreamExt};
 use json::{object, parse, stringify, JsonValue};
 use mac_address::get_mac_address;
-use once_cell::sync::Lazy;
 use std::{
-    fmt::{Display, Formatter, Result as FmtResult}, fs::read_to_string, net::Shutdown, os::unix::net::UnixDatagram, panic::set_hook, process::Command, str::FromStr
+    fmt::{Display, Formatter, Result as FmtResult}, fs::read_to_string, panic::set_hook, process::Command, str::FromStr
 };
 use tokio::spawn;
 use tokio_tungstenite::{
@@ -20,19 +19,6 @@ use tokio_tungstenite::{
     }
 };
 use url::Url;
-
-const ADC_SOCKET: Lazy<UnixDatagram> = Lazy::new(|| {
-    let socket = UnixDatagram::unbound().unwrap();
-    socket.connect("/var/lb/ADC_socket").unwrap();
-    socket
-});
-const DAC_SOCKET: Lazy<UnixDatagram> = Lazy::new(|| {
-    let socket = UnixDatagram::unbound().unwrap();
-    socket.connect("/var/lb/DAC_socket").unwrap();
-    socket
-});
-// /var/lb/BUTTON_socket - button; not sure if needed
-// /var/lb/SET_COLOR_socket - LED; not sure if needed
 
 /// commands for LED as an enum
 #[allow(dead_code)]
@@ -93,17 +79,6 @@ fn set_led(arg: LEDCommand) -> bool {
 
 /// get input (0-255)
 fn get_input() -> u8 {
-    match ADC_SOCKET.send(b"-1") {
-        Err(_) => return 0,
-        _ => {}
-    };
-    let mut buf = vec![];
-    match ADC_SOCKET.recv(&mut buf) {
-        Err(_) => return 0,
-        _ => {}
-    }
-    u8::from_str_radix(String::from_utf8_lossy(&buf).split_whitespace().nth(0).unwrap_or("0"), 10).unwrap_or(0)
-    /*
     let mut cmd = Command::new("/usr/local/lb/ADC/bin/getADC");
     cmd.arg("-1");
 
@@ -115,18 +90,14 @@ fn get_input() -> u8 {
         }
         Err(_) => 0,
     }
-    */
 }
 
 /// set output (as 0x0000 - 0xFFFF)
 /// returns success as a boolean
 fn set_output(value: u16) -> bool {
-    DAC_SOCKET.send(format!("{:04x}", value).as_bytes()).is_ok()
-    /*
     let mut cmd = Command::new("/usr/local/lb/DAC/bin/setDAC");
     cmd.arg(format!("{:04x}", value));
     cmd.execute_check_exit_status_code(0).is_ok()
-    */
 }
 
 // MAIN LOOP
@@ -248,11 +219,9 @@ async fn main() {
     });
 
     set_hook(Box::new(move |v| {
-        println!("{}", v.to_string());
+        eprintln!("{}", v.to_string());
         send_loop.abort();
         receive_loop.abort();
-        while let Err(_) = ADC_SOCKET.shutdown(Shutdown::Read) {}
-        while let Err(_) = DAC_SOCKET.shutdown(Shutdown::Write) {}
     }));
 
     // Main IO loop
