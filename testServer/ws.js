@@ -1,4 +1,5 @@
 const ws = require('ws')
+const bytes = require('bytes')
 
 const server = new ws.Server({
     port: 3000
@@ -11,7 +12,30 @@ server.broadcast = function (d) {
 server.on('connection', (c, r) => {
     console.log('connect')
     console.log(r.headers)
-    c.on('message', d => console.log(`d: ${d.toString('utf8')}`))
+    const MAC = r.headers['mac-address'].toString()
+    c.on('message', d => {
+        try {
+            const json = JSON.parse(d.toString('utf8'))
+            const OPCODE = json.opcode
+            if (OPCODE == 0x1) { // Input
+                console.log(`INPUT ${MAC}:`)
+                console.log(`- VALUE: ${json.data.value}`)
+            } else if (OPCODE == 0x3) { // Identify thing
+                console.log(`IDENTIFY:`)
+                console.log(`- MAC: ${json.mac_address}`)
+                console.log(`- ID: ${json.cb_id}`)
+            } else if (OPCODE == 0xF4) {
+                const stats = json.stats
+                console.log(`STAT ${MAC}:`)
+                console.log(`- CPU USAGE: ${stats.cpu_usage}%`)
+                console.log(`- MEMORY USED: ${bytes.format(stats.memory_usage)}`)
+                console.log(`- TOTAL MEMORY: ${bytes.format(stats.total_memory)}`)
+                console.log(`- MEMORY USED (%): ${stats.memory_usage_percent}%`)
+            } else {
+                console.log(`invalid opcode; packet: ${d.toString('utf8')}`)
+            }
+        } catch {}
+    })
 })
 
 const opcodes = [0x2, 0xF1, 0xF3]
