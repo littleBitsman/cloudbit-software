@@ -298,7 +298,7 @@ async fn main() {
                                             let cpu = process.cpu_usage();
                                             let mem_bytes = process.memory();
                                             let total_mem = sysinfo.total_memory();
-                                            let mem_percent = mem_bytes / total_mem;
+                                            let mem_percent = (mem_bytes as f64) / (total_mem as f64);
 
                                             // Opcode 0xF4 is system stats (RETURNED from 0xF3)
                                             sender
