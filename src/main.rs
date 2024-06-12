@@ -251,8 +251,8 @@ async fn main() {
         println!("{}", v.to_string());
         send_loop.abort();
         receive_loop.abort();
-        while let Err(_) = ADC_SOCKET.shutdown(Shutdown::Both) {}
-        while let Err(_) = DAC_SOCKET.shutdown(Shutdown::Both) {}
+        while let Err(_) = ADC_SOCKET.shutdown(Shutdown::Read) {}
+        while let Err(_) = DAC_SOCKET.shutdown(Shutdown::Write) {}
     }));
 
     // Main IO loop
