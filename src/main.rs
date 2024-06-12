@@ -24,7 +24,7 @@ use tokio_tungstenite::{
     connect_async,
     tungstenite::{
         handshake::client::{generate_key, Request},
-        Message,
+        Error, Message,
     },
 };
 use url::Url;
@@ -183,7 +183,7 @@ async fn main() {
 
     let (mut tx, mut receiver) = client.split();
 
-    let (mut sender, mut rx) = channel::<Message>(8);
+    let (mut sender, mut rx) = channel::<Message>(16);
     let mut sender2 = sender.clone();
 
     eprintln!("Successfully connected");
@@ -206,7 +206,10 @@ async fn main() {
         while let Some(msg) = rx.next().await {
             let result = tx.send(msg).await;
             match result {
-                Err(e) => eprintln!("error {}", e),
+                Err(Error::AlreadyClosed) | Err(Error::ConnectionClosed) => {
+                    panic!("connection closed, rebooting to attempt reconnection")
+                }
+                Err(e) => eprintln!("error on WebSocket: {}", e),
                 _ => {}
             }
         }
