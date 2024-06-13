@@ -1,0 +1,19 @@
+[Unit]
+Description=Cloud Client
+Requires=dac.service LEDcolor.service ADC.service
+Wants=dac.service LEDcolor.service ADC.service
+
+[Service]
+ExecStartPre=/usr/local/lb/LEDcolor/bin/setColor teal hold
+ExecStart=/usr/local/lb/cloud_client/bin/cloud_client
+ExecStopPost=/usr/local/lb/LEDcolor/bin/setColor red blink
+KillMode=mixed
+Type=simple
+Restart=always
+RestartSec=2s
+# these are for monitoring, should the need ever arise
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target
