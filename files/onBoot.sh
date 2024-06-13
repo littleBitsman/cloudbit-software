@@ -96,6 +96,9 @@ if [[ $status != 0 ]] ; then
 	systemctl halt
 fi
 
+# pretty sure this literally cannot happen
+# - littleBitsman
+
 # check if /var/lb/runTestStatus isn't empty
 # this implies tests were run - set LED green if they passed then halt system
 if [ -s $TMP_DIR/runTestStatus ]; then
