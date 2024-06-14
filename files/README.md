@@ -8,8 +8,8 @@ Make sure you "save state" of your drive before doing any modifications on your 
 Consider the root directory of the cloudBit SD card `~` for all of these.
 
 - `onBoot.sh`: `~/usr/local/lb/bit-util/onBoot.sh` **
-    - Changes made: modifying LED colors to make it more clear when something happens during boot
-- `cloudclient.service`: `~/usr/lib/systemd/system` **
+    - Changes made: modifying LED colors to make it more clear when something happens during boot, **setting permissions of `~/usr/local/lb/cloud_client/bin/cloud_client` to 777 (chmod) on boot**
+- `cloudclient.service`: `~/usr/lib/systemd/system`
     - Changes made: adding a cooldown, adding LED colors after error and before startup, enabling logging to journal and stdout/stderr
 
 ### DO NOT TRY TO EXECUTE THESE FILES
