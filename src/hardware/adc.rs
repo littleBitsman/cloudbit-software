@@ -9,7 +9,7 @@ use std::{
     sync::OnceLock
 };
 
-use libc::{mmap64, munmap, MAP_FAILED, MAP_SHARED, O_RDWR, PROT_READ, PROT_WRITE};
+use libc::{mmap, munmap, MAP_FAILED, MAP_SHARED, O_RDWR, PROT_READ, PROT_WRITE};
 use tokio::time::{Duration, sleep};
 
 pub const ADC_PAGE: usize = 0x80050000;
@@ -32,7 +32,7 @@ pub fn init() -> IoResult<()> {
         .as_raw_fd();
 
     let mmaped = unsafe {
-        mmap64(
+        mmap(
             null_mut(),
             MAP_SIZE,
             PROT_READ | PROT_WRITE,
