@@ -15,7 +15,7 @@ use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     fs::read_to_string,
     io::ErrorKind as IoErrorKind,
-    panic::set_hook,
+    panic::set_hook as set_panic_hook,
     process::{id as get_pid, Command},
     str::FromStr as _,
     time::Duration,
@@ -108,107 +108,20 @@ fn stringify(obj: impl Sized + Serialize) -> String {
     to_string(&obj).unwrap()
 }
 
-/// LED wrapper
-mod led {
-    use crate::LEDCommand;
-    use execute::Execute;
-    use std::process::Command;
+// Hardware wrappers
+mod hardware;
 
-    /// the raw form of `set_led()`, directly passes `str` to `/usr/local/lb/LEDcolor/bin/setColor` and
-    /// returns success as a boolean
-    fn set_raw(str: String) -> bool {
-        Command::new("/usr/local/lb/LEDcolor/bin/setColor")
-            .arg(str)
-            .execute_check_exit_status_code(0)
-            .is_ok()
-    }
-
-    /// set led using [`LEDCommand`]
-    ///
-    /// returns success as a boolean
-    pub fn set(arg: LEDCommand) -> bool {
-        set_raw(arg.to_string())
-    }
-
-    /// set led using [`LEDCommandChain`]
-    ///
-    /// returns success as a boolean
-    pub fn set_many(arg: Vec<LEDCommand>) -> bool {
-        if arg.is_empty() {
-            false
-        } else {
-            let mut str = String::new();
-            for item in arg {
-                str.push_str(format!("{item} ").as_str())
-            }
-            set_raw(str)
-        }
-    }
-}
-
-/// ADC wrapper
-mod adc {
-    use std::ptr::{read_volatile, write_volatile};
-
-    pub const ADC_PAGE: usize = 0x80050000;
-    const ADC_SCHED_PAGE: *mut u32 = (ADC_PAGE + 0x0004) as *mut u32;
-    const ADC_VALUE_PAGE: *const u32 = (ADC_PAGE + 0x0050) as *const u32;
-    const ADC_CLEAR_PAGE: *mut u32 = (ADC_PAGE + 0x0018) as *mut u32;
-    static mut ADC_RAW_VALUE: u32 = 0;
-
-    /*
-    pub fn init() {
-        if read_to_string("/var/adc_init").is_ok() { // ADC was already initalized previously in cloud_client
-            return
-        }
-        write_file("/var/adc_init", []).unwrap();
-
-        // There isn't actually anything to do AFAIK so uhhh yeah lol
-    }
-    */
-
-    /// Gets the raw ADC value, does some math (defined by the original ADC.d program
-    /// from littleBits), then downscales its range from u32 to u8.
-    pub fn read() -> u8 {
-        let mut value = unsafe {
-            write_volatile(ADC_SCHED_PAGE, 0x1);
-
-            let mut value = read_volatile(ADC_VALUE_PAGE);
-            while (value & 0x80000000) == ADC_RAW_VALUE & 0x80000000 {
-                value = read_volatile(ADC_VALUE_PAGE);
-            }
-
-            ADC_RAW_VALUE = value;
-
-            write_volatile(ADC_CLEAR_PAGE, 0x1);
-
-            value
-        } % 0x40000;
-        value = if value <= 200 {
-            0
-        } else {
-            (31 * value - 0x1838) / 11
-        };
-
-        (value.clamp(0, 4095) / 16) as u8
-    }
-}
-
-/// Button wrapper
-mod button {
-    use std::ptr::read_volatile;
-
-    const GPIO_PAGE: u32 = 0x80018000;
-    const BUTTON_PIN_PAGE: *const u32 = (GPIO_PAGE + 0x0610) as *const u32;
-
-    pub fn get_state() -> bool {
-        let v = unsafe { read_volatile(BUTTON_PIN_PAGE) };
-        (v & 0x80) > 0
-    }
-}
+use hardware::adc;
+use hardware::button;
+use hardware::led;
 
 /// set output (as 0x0000 - 0xFFFF)
 /// returns success as a boolean
+/// 
+/// This does NOT have a memory-based wrapper due to the complexity of the DAC.
+/// You should NEVER be calling this in very rapid succession (meaning, 
+/// many, many times per second for long periods of time, doing this for 
+/// <2 seconds at a time with long-ish breaks should be safe)
 fn set_output(value: u16) -> bool {
     Command::new("/usr/local/lb/DAC/bin/setDAC")
         .arg(format!("{:04x}", value))
@@ -443,15 +356,18 @@ async fn main() {
         }
     });
 
-    set_hook(Box::new(move |v| {
+    set_panic_hook(Box::new(move |v| {
         eprintln!("{}", v.to_string());
         send_loop.abort();
         receive_loop.abort();
+        hardware::cleanup_all();
     }));
+
+    hardware::init_all().map_err(|(origin, err)| format!("failed to initialize {origin}: {err}")).unwrap();
 
     // Main IO loop
     loop {
-        let right_now = adc::read();
+        let right_now = adc::read().await;
         if current_input.abs_diff(right_now) > INPUT_DELTA_THRESHOLD {
             current_input = right_now;
             sender2
