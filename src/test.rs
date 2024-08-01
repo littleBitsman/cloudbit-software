@@ -1,9 +1,9 @@
 use std::ptr::{read_volatile, write_volatile};
 
 pub const ADC_PAGE: usize = 0x80050000;
-const ADC_SCHED_PAGE: *mut u32 = (ADC_PAGE + 0x0004) as *mut u32;
-const ADC_VALUE_PAGE: *const u32 = (ADC_PAGE + 0x0050) as *const u32;
-const ADC_CLEAR_PAGE: *mut u32 = (ADC_PAGE + 0x0018) as *mut u32;
+const ADC_SCHED_PAGE: *mut u32 = (ADC_PAGE + (0x0004 / 4)) as *mut u32;
+const ADC_VALUE_PAGE: *const u32 = (ADC_PAGE + (0x0050 / 4)) as *const u32;
+const ADC_CLEAR_PAGE: *mut u32 = (ADC_PAGE + (0x0018 / 4)) as *mut u32;
 static mut ADC_RAW_VALUE: u32 = 0;
 
 /*
