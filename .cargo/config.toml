@@ -1,2 +1,2 @@
 [build]
-target = "armv5te-unknown-linux-gnueabi"
+target = "armv5te-unknown-linux-musleabi"
