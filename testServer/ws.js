@@ -2,7 +2,7 @@ const ws = require('ws')
 const bytes = require('bytes')
 
 const server = new ws.Server({
-    port: 3000
+    port: 80
 })
 
 server.broadcast = function (d) {

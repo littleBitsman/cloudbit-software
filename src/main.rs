@@ -12,11 +12,12 @@ use once_cell::sync::Lazy;
 use serde::Serialize;
 use serde_json::{from_str, json, to_string, Value as JsonValue};
 use std::{
+    fmt::{Display, Formatter, Result as FmtResult},
     fs::read_to_string,
     io::ErrorKind as IoErrorKind,
     panic::set_hook,
     process::{id as get_pid, Command},
-    str::FromStr,
+    str::FromStr as _,
     time::Duration,
 };
 use sysinfo::{Pid, System};
@@ -35,7 +36,7 @@ const PID: Lazy<Pid> = Lazy::new(|| Pid::from_u32(get_pid()));
 
 /// commands for LED as an enum
 #[allow(dead_code)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum LEDCommand {
     Red,
     Green,
@@ -73,9 +74,9 @@ impl TryFrom<String> for LEDCommand {
     type Error = ();
 }
 
-impl Into<&str> for LEDCommand {
-    fn into(self) -> &'static str {
-        match self {
+impl Into<String> for LEDCommand {
+    fn into(self) -> String {
+        String::from(match self {
             Self::Red => "red",
             Self::Green => "green",
             Self::Blue => "blue",
@@ -88,77 +89,159 @@ impl Into<&str> for LEDCommand {
             Self::Clownbarf => "clownbarf",
             Self::Blink => "blink",
             Self::Hold => "hold",
-        }
+        })
     }
 }
 
-impl ToString for LEDCommand {
-    fn to_string(&self) -> String {
-        let s: &str = (*self).into();
-        s.to_string()
+impl Display for LEDCommand {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        let s: String = (*self).into();
+        write!(f, "{s}")
     }
 }
 
 // UTILS
 
+/// Quick way to turn a `impl Serialize` into a JSON string.
+#[inline]
 fn stringify(obj: impl Sized + Serialize) -> String {
     to_string(&obj).unwrap()
 }
 
-/// the raw form of `set_led()`, directly passes `str` to `/usr/local/lb/LEDcolor/bin/setColor`
-/// returns success as a boolean
-fn set_led_raw(str: String) -> bool {
-    let mut cmd = Command::new("/usr/local/lb/LEDcolor/bin/setColor");
-    cmd.arg(str);
-    cmd.execute_check_exit_status_code(0).is_ok()
-}
+/// LED wrapper
+mod led {
+    use crate::LEDCommand;
+    use execute::Execute;
+    use std::process::Command;
 
-/// set led using `LEDCommand`
-/// returns success as a boolean
-fn set_led(arg: LEDCommand) -> bool {
-    set_led_raw(arg.to_string())
-}
+    /// the raw form of `set_led()`, directly passes `str` to `/usr/local/lb/LEDcolor/bin/setColor` and
+    /// returns success as a boolean
+    fn set_raw(str: String) -> bool {
+        Command::new("/usr/local/lb/LEDcolor/bin/setColor")
+            .arg(str)
+            .execute_check_exit_status_code(0)
+            .is_ok()
+    }
 
-/// get input (0-255)
-fn get_input() -> u8 {
-    let mut cmd = Command::new("/usr/local/lb/ADC/bin/getADC");
-    cmd.arg("-1");
+    /// set led using [`LEDCommand`]
+    ///
+    /// returns success as a boolean
+    pub fn set(arg: LEDCommand) -> bool {
+        set_raw(arg.to_string())
+    }
 
-    match cmd.output() {
-        Ok(output) => {
-            let lines = String::from_utf8_lossy(&output.stdout);
-            let num = lines.split("\n").next().unwrap_or("0");
-            u8::from_str(num.trim()).unwrap()
+    /// set led using [`LEDCommandChain`]
+    ///
+    /// returns success as a boolean
+    pub fn set_many(arg: Vec<LEDCommand>) -> bool {
+        if arg.is_empty() {
+            false
+        } else {
+            let mut str = String::new();
+            for item in arg {
+                str.push_str(format!("{item} ").as_str())
+            }
+            set_raw(str)
         }
-        Err(_) => 0,
+    }
+}
+
+/// ADC wrapper
+mod adc {
+    use std::ptr::{read_volatile, write_volatile};
+
+    pub const ADC_PAGE: usize = 0x80050000;
+    const ADC_SCHED_PAGE: *mut u32 = (ADC_PAGE + 0x0004) as *mut u32;
+    const ADC_VALUE_PAGE: *const u32 = (ADC_PAGE + 0x0050) as *const u32;
+    const ADC_CLEAR_PAGE: *mut u32 = (ADC_PAGE + 0x0018) as *mut u32;
+    static mut ADC_RAW_VALUE: u32 = 0;
+
+    /*
+    pub fn init() {
+        if read_to_string("/var/adc_init").is_ok() { // ADC was already initalized previously in cloud_client
+            return
+        }
+        write_file("/var/adc_init", []).unwrap();
+
+        // There isn't actually anything to do AFAIK so uhhh yeah lol
+    }
+    */
+
+    /// Gets the raw ADC value, does some math (defined by the original ADC.d program
+    /// from littleBits), then downscales its range from u32 to u8.
+    pub fn read() -> u8 {
+        let mut value = unsafe {
+            write_volatile(ADC_SCHED_PAGE, 0x1);
+
+            let mut value = read_volatile(ADC_VALUE_PAGE);
+            while (value & 0x80000000) == ADC_RAW_VALUE & 0x80000000 {
+                value = read_volatile(ADC_VALUE_PAGE);
+            }
+
+            ADC_RAW_VALUE = value;
+
+            write_volatile(ADC_CLEAR_PAGE, 0x1);
+
+            value
+        } % 0x40000;
+        value = if value <= 200 {
+            0
+        } else {
+            (31 * value - 0x1838) / 11
+        };
+
+        (value.clamp(0, 4095) / 16) as u8
+    }
+}
+
+/// Button wrapper
+mod button {
+    use std::ptr::read_volatile;
+
+    const GPIO_PAGE: u32 = 0x80018000;
+    const BUTTON_PIN_PAGE: *const u32 = (GPIO_PAGE + 0x0610) as *const u32;
+
+    pub fn get_state() -> bool {
+        let v = unsafe { read_volatile(BUTTON_PIN_PAGE) };
+        (v & 0x80) > 0
     }
 }
 
 /// set output (as 0x0000 - 0xFFFF)
 /// returns success as a boolean
 fn set_output(value: u16) -> bool {
-    let mut cmd = Command::new("/usr/local/lb/DAC/bin/setDAC");
-    cmd.arg(format!("{:04x}", value));
-    cmd.execute_check_exit_status_code(0).is_ok()
+    Command::new("/usr/local/lb/DAC/bin/setDAC")
+        .arg(format!("{:04x}", value))
+        .execute_check_exit_status_code(0)
+        .is_ok()
 }
 
 // MAIN LOOP
 #[tokio::main]
 async fn main() {
-    set_led(LEDCommand::Teal);
-    set_led(LEDCommand::Blink);
-
     let mac_address = get_mac_address()
         .expect("Failed to get MAC address")
         .expect("Failed to get MAC address");
-    let cb_id_binding = read_to_string("/var/lb/id").unwrap_or("ERROR_READING_ID".to_string());
-    let cb_id = cb_id_binding.trim();
+    let cb_id = read_to_string("/var/lb/id").unwrap_or(String::from("ERROR_READING_ID"));
+    let cb_id = cb_id.trim();
+
+    let default_url = Url::from_str(DEFAULT_URL).unwrap();
 
     // Parse url at /usr/local/lb/cloud_client/server_url if it exists, use DEFAULT_URL if it doesn't
-    let url = Url::from_str(
+    let mut url = Url::from_str(
         &read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or(DEFAULT_URL.to_string()),
     )
-    .unwrap_or(Url::from_str(DEFAULT_URL).unwrap());
+    .unwrap_or(default_url.clone());
+
+    match url.scheme() {
+        "http" => url.set_scheme("ws").unwrap(),
+        "https" => url.set_scheme("wss").unwrap(),
+        "ws" | "wss" => {}
+        a => {
+            eprintln!("Invalid scheme {a} on cloudbit server URL, falling back to default server");
+            url = default_url
+        }
+    }
 
     eprintln!(
         "Attempting to connect to {} ({})",
@@ -176,11 +259,21 @@ async fn main() {
         .header("Connection", "Upgrade")
         .header("Upgrade", "websocket")
         .header("Sec-Websocket-Version", "13")
-        .header("Sec-Websocket-Key", generate_key().as_str())
+        .header("Sec-Websocket-Key", generate_key())
         .body(())
         .unwrap();
 
-    let (client, _) = connect_async(request).await.unwrap();
+    let client = loop {
+        led::set(LEDCommand::Teal);
+        led::set(LEDCommand::Blink);
+        if let Ok((client, _)) = connect_async(request.clone()).await {
+            break client;
+        } else {
+            led::set(LEDCommand::Red);
+            led::set(LEDCommand::Blink);
+            sleep(Duration::from_secs(2)).await;
+        }
+    };
 
     let (mut tx, mut receiver) = client.split();
 
@@ -193,15 +286,15 @@ async fn main() {
         json!({
             "opcode": 0x3,
             "mac_address": mac_address.to_string(),
-            "cb_id": cb_id.to_string()
+            "cb_id": cb_id
         })
         .to_string(),
     ))
     .await
     .unwrap();
 
-    set_led(LEDCommand::Green);
-    set_led(LEDCommand::Hold);
+    led::set(LEDCommand::Green);
+    led::set(LEDCommand::Hold);
 
     let send_loop = spawn(async move {
         while let Some(msg) = rx.next().await {
@@ -252,7 +345,7 @@ async fn main() {
                                         0x2 => {
                                             // OUTPUT
                                             if let Some(new) = obj["data"]["value"].as_u64() {
-                                                set_output(new as u16);
+                                                set_output(new.min(u16::MAX as u64) as u16);
                                             } else {
                                                 eprintln!(
                                                     "bad output packet: {}",
@@ -266,16 +359,19 @@ async fn main() {
                                         // Set LED
                                         0xF0 => {
                                             if let Some(command) = obj["led_command"].as_str() {
-                                                if let Ok(led) =
-                                                    LEDCommand::try_from(command.to_string())
-                                                {
-                                                    set_led(led);
-                                                } else {
-                                                    eprintln!(
-                                                        "bad set LED packet: {}",
-                                                        stringify(parsed)
-                                                    )
+                                                let command =
+                                                    command.replace(", ", " ").replace(",", " ");
+
+                                                let mut chain = Vec::new();
+
+                                                for item in command.split(" ") {
+                                                    if let Ok(cmd) =
+                                                        LEDCommand::try_from(item.to_string())
+                                                    {
+                                                        chain.push(cmd)
+                                                    }
                                                 }
+                                                led::set_many(chain);
                                             } else {
                                                 eprintln!(
                                                     "bad set LED packet: {}",
@@ -285,34 +381,52 @@ async fn main() {
                                         }
 
                                         // TODO #4 Get button (it is never sent normally)
-                                        0xF1 => {}
-
-                                        // Get system stats (e.g., memory usage, CPU usage)
-                                        0xF3 => {
-                                            let mut sysinfo = SYSINFO;
-                                            sysinfo.refresh_cpu();
-                                            sysinfo.refresh_memory();
-                                            sysinfo.refresh_process(*PID);
-
-                                            let process = sysinfo.process(*PID).unwrap();
-                                            let cpu = process.cpu_usage();
-                                            let mem_bytes = process.memory();
-                                            let total_mem = sysinfo.total_memory();
-                                            let mem_percent = ((mem_bytes as f64) / (total_mem as f64)) * 100.0;
-
-                                            // Opcode 0xF4 is system stats (RETURNED from 0xF3)
+                                        0xF1 => 
                                             sender
-                                                .send(Message::text(stringify(json!({
-                                                    "opcode": 0xF4,
-                                                    "stats": {
-                                                        "cpu_usage": cpu,
-                                                        "memory_usage": mem_bytes,
-                                                        "total_memory": total_mem,
-                                                        "memory_usage_percent": mem_percent
+                                                .send(Message::Text(stringify(json!({
+                                                    "opcode": 0xF2, // 0xF2 is button state (returned from 0xF1)
+                                                    "data": {
+                                                        "button": button::get_state()
                                                     }
                                                 }))))
                                                 .await
-                                                .unwrap();
+                                                .unwrap(),
+
+                                        // Get system stats (e.g., memory usage, CPU usage)
+                                        0xF3 => {
+                                            let mut sender = sender.clone();
+                                            spawn(async move {
+                                                let mut sysinfo = SYSINFO;
+                                                sysinfo.refresh_cpu();
+                                                sysinfo.refresh_memory();
+                                                sysinfo.refresh_process(*PID);
+
+                                                sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL).await;
+
+                                                sysinfo.refresh_cpu();
+
+                                                let process = sysinfo.process(*PID).unwrap();
+                                                let cpu = process.cpu_usage();
+                                                let mem_bytes = process.memory();
+                                                let total_mem = sysinfo.total_memory();
+                                                let mem_percent = ((mem_bytes as f64)
+                                                    / (total_mem as f64))
+                                                    * 100.0;
+
+                                                // Opcode 0xF4 is system stats (RETURNED from 0xF3)
+                                                sender
+                                                    .send(Message::text(stringify(json!({
+                                                        "opcode": 0xF4,
+                                                        "stats": {
+                                                            "cpu_usage": cpu,
+                                                            "memory_usage": mem_bytes,
+                                                            "total_memory": total_mem,
+                                                            "memory_usage_percent": mem_percent
+                                                        }
+                                                    }))))
+                                                    .await
+                                                    .unwrap();
+                                            });
                                         }
                                         _ => eprintln!("invalid opcode: {}", opcode),
                                     }
@@ -337,7 +451,7 @@ async fn main() {
 
     // Main IO loop
     loop {
-        let right_now = get_input();
+        let right_now = adc::read();
         if current_input.abs_diff(right_now) > INPUT_DELTA_THRESHOLD {
             current_input = right_now;
             sender2

@@ -18,4 +18,4 @@ url = "2.5.0"
 
 [[bin]]
 name = "cloud_client"
-path = "src/main.rs"
+path = "src/test.rs"
