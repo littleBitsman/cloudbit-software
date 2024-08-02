@@ -2,14 +2,12 @@
 
 use super::MAP_SIZE;
 use std::{
-    fs::OpenOptions,
     io::{Error, ErrorKind, Result as IoResult},
-    os::unix::{fs::OpenOptionsExt, io::AsRawFd},
     ptr::null_mut,
     sync::OnceLock
 };
 
-use libc::{mmap, munmap, MAP_FAILED, MAP_SHARED, O_RDWR, PROT_READ, PROT_WRITE};
+use libc::{mmap, munmap, open, MAP_FAILED, MAP_SHARED, O_RDWR, PROT_READ, PROT_WRITE};
 use tokio::time::{Duration, sleep};
 
 pub const ADC_PAGE: usize = 0x80050000;
@@ -24,12 +22,7 @@ pub fn init() -> IoResult<()> {
         return Ok(());
     }
 
-    let fd = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .custom_flags(O_RDWR)
-        .open("/dev/mem")?
-        .as_raw_fd();
+    let fd = unsafe { open("/dev/mem".as_ptr(), O_RDWR) };
 
     let mmaped = unsafe {
         mmap(
