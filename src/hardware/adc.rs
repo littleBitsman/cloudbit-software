@@ -2,13 +2,15 @@
 
 use super::MAP_SIZE;
 use std::{
-    io::{Error, Result as IoResult},
+    fs::OpenOptions,
+    io::{Error, ErrorKind, Result as IoResult},
+    os::{fd::AsRawFd, unix::fs::OpenOptionsExt},
     ptr::null_mut,
-    sync::OnceLock
+    sync::OnceLock,
 };
 
-use libc::{mmap, munmap, open, MAP_FAILED, MAP_SHARED, O_RDWR, PROT_READ, PROT_WRITE};
-use tokio::time::{Duration, sleep};
+use libc::{mmap, munmap, MAP_FAILED, MAP_SHARED, O_RDWR, PROT_READ, PROT_WRITE};
+use tokio::time::{sleep, Duration};
 
 pub const ADC_PAGE: usize = 0x80050000;
 pub const ADC_SCHED_OFFSET: usize = 0x0004;
@@ -22,7 +24,12 @@ pub fn init() -> IoResult<()> {
         return Ok(());
     }
 
-    let fd = unsafe { open("/dev/mem".as_ptr(), O_RDWR) };
+    let fd = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .custom_flags(O_RDWR)
+        .open("/dev/mem")?
+        .as_raw_fd();
 
     let mmaped = unsafe {
         mmap(
@@ -36,7 +43,7 @@ pub fn init() -> IoResult<()> {
     };
 
     if mmaped == MAP_FAILED {
-        return Err(Error::last_os_error());
+        return Err(Error::new(ErrorKind::Other, "mmap failed"));
     }
     ADC_POINTER.into_inner();
     ADC_POINTER.set(mmaped as *mut u32).unwrap();
@@ -49,9 +56,7 @@ pub async fn read() -> u8 {
     if let Some(pointer) = ADC_POINTER.get() {
         let pointer = *pointer;
         let mut value = unsafe {
-            pointer
-                .byte_add(ADC_SCHED_OFFSET)
-                .write_volatile(0x1);
+            pointer.byte_add(ADC_SCHED_OFFSET).write_volatile(0x1);
 
             let value_ptr = pointer.byte_add(ADC_VALUE_OFFSET);
 
@@ -62,14 +67,15 @@ pub async fn read() -> u8 {
 
             let value = value_ptr.read_volatile();
 
-            pointer
-                .byte_add(ADC_CLEAR_OFFSET)
-                .write_volatile(0x1);
+            pointer.byte_add(ADC_CLEAR_OFFSET).write_volatile(0x1);
 
             value
-        }.clamp(0, 0x3FFFF);
+        }
+        .clamp(0, 0x3FFFF);
 
-        value = if value <= 200 { 0 } else {
+        value = if value <= 200 {
+            0
+        } else {
             (31 * value - 0x1838) / 11
         };
 
