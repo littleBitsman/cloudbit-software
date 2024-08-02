@@ -24,7 +24,7 @@ fn get() -> Option<*mut u32> {
 
 pub fn init() -> IoResult<()> {
     if get().is_some() {
-        return Ok(());
+        return Ok(())
     }
 
     let file = OpenOptions::new()
