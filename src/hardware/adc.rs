@@ -2,7 +2,7 @@
 
 use super::MAP_SIZE;
 use std::{
-    io::{Error, ErrorKind, Result as IoResult},
+    io::{Error, Result as IoResult},
     ptr::null_mut,
     sync::OnceLock
 };
@@ -36,7 +36,7 @@ pub fn init() -> IoResult<()> {
     };
 
     if mmaped == MAP_FAILED {
-        return Err(Error::new(ErrorKind::Other, "mmap failed"));
+        return Err(Error::last_os_error());
     }
     ADC_POINTER.into_inner();
     ADC_POINTER.set(mmaped as *mut u32).unwrap();
