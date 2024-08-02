@@ -299,7 +299,7 @@ async fn main() {
                                                 .send(Message::Text(stringify(json!({
                                                     "opcode": 0xF2, // 0xF2 is button state (returned from 0xF1)
                                                     "data": {
-                                                        "button": button::get_state()
+                                                        "button": button::read()
                                                     }
                                                 }))))
                                                 .await
@@ -367,7 +367,7 @@ async fn main() {
 
     // Main IO loop
     loop {
-        let right_now = adc::read().await;
+        let right_now = adc::read();
         if current_input.abs_diff(right_now) > INPUT_DELTA_THRESHOLD {
             current_input = right_now;
             sender2

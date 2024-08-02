@@ -1,35 +1,40 @@
 //! Button wrapper
 
-use super::MAP_SIZE;
+use crate::hardware::{MAP_SIZE, mem::peek};
 use std::{
     fs::OpenOptions,
-    io::{Error, ErrorKind, Result as IoResult},
+    io::{Error, Result as IoResult},
     os::unix::{fs::OpenOptionsExt, io::AsRawFd},
-    ptr::null_mut,
+    ptr::null_mut, 
     sync::OnceLock
 };
 
-use libc::{mmap64, munmap, MAP_FAILED, MAP_SHARED, O_RDWR, PROT_READ, PROT_WRITE};
+use libc::{mmap, munmap, MAP_FAILED, MAP_SHARED, O_RDWR, PROT_READ, PROT_WRITE};
 
 const GPIO_PAGE: usize = 0x80018000;
 const BUTTON_OFFSET: usize = 0x0610;
 
-const GPIO_POINTER: OnceLock<*mut u32> = OnceLock::new();
+static mut GPIO_POINTER: OnceLock<*mut u32> = OnceLock::new();
+
+fn get() -> Option<*mut u32> {
+    unsafe { GPIO_POINTER.get().cloned() }
+}
 
 pub fn init() -> IoResult<()> {
-    if GPIO_POINTER.get().is_some() {
+    if get().is_some() {
         return Ok(());
     }
 
-    let fd = OpenOptions::new()
+    let file = OpenOptions::new()
         .read(true)
         .write(true)
         .custom_flags(O_RDWR)
-        .open("/dev/mem")?
-        .as_raw_fd();
+        .open("/dev/mem")?;
+
+    let fd = file.as_raw_fd();
 
     let mmaped = unsafe {
-        mmap64(
+        mmap(
             null_mut(),
             MAP_SIZE,
             PROT_READ | PROT_WRITE,
@@ -40,22 +45,28 @@ pub fn init() -> IoResult<()> {
     };
 
     if mmaped == MAP_FAILED {
-        return Err(Error::new(ErrorKind::Other, "mmap failed"));
+        return Err(Error::last_os_error());
     }
-    GPIO_POINTER.into_inner();
-    GPIO_POINTER.set(mmaped as *mut u32).unwrap();
+
+    unsafe {
+        GPIO_POINTER.set(mmaped as *mut u32).unwrap();
+    }
 
     Ok(())
 }
 
-pub fn get_state() -> bool {
-    GPIO_POINTER.get().is_some_and(|v| {
-        (unsafe { (*v).byte_add(BUTTON_OFFSET).read_volatile() } & 0x80) > 0
+pub fn read() -> bool {
+    if get().is_none() {
+        println!("warning: no button page pointer found");
+    }
+    get().is_some_and(|v| {
+        // For some reason this is inverted
+        (peek(v, BUTTON_OFFSET) & 0x80) == 0
     })
 }
 
 pub fn cleanup() {
-    if let Some(pointer) = GPIO_POINTER.into_inner() {
+    if let Some(pointer) = get() {
         unsafe { munmap(pointer as *mut _, MAP_SIZE) };
     }
 }
