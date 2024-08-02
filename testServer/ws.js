@@ -46,7 +46,7 @@ process.stdin.on('data', d => {
     if (!opcodes.includes(opcode)) return
 
     if (opcode == 0x2) {
-        const num = parseInt()
+        const num = parseInt(args[1])
         if (isNaN(num) || num < 0 || num > 0xFFFF) return
 
         server.broadcast(JSON.stringify({
