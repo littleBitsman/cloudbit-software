@@ -140,12 +140,18 @@ async fn main() {
 
     let default_url = Url::from_str(DEFAULT_URL).unwrap();
 
-    // Parse url at /usr/local/lb/cloud_client/server_url if it exists, use DEFAULT_URL if it doesn't
+    // Parse url in /usr/local/lb/cloud_client/server_url if it exists, 
+    // use DEFAULT_URL if it doesn't or is not a valid URL.
     let mut url = Url::from_str(
         &read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or(DEFAULT_URL.to_string()),
     )
     .unwrap_or(default_url.clone());
 
+    // The scheme must be any of these:
+    // - http (converted to ws),
+    // - https (converted to wss),
+    // - ws or wss
+    // If it is not any of those, the error is logged and the DEFAULT_URL is used.
     match url.scheme() {
         "http" => url.set_scheme("ws").unwrap(),
         "https" => url.set_scheme("wss").unwrap(),
@@ -188,10 +194,14 @@ async fn main() {
         }
     };
 
+    // tx: sender used internally, this is done so because tx is not Clone
+    // receiver: receiver from the socket, only 1 copy is needed since its managed by 1 thread only
     let (mut tx, mut receiver) = client.split();
 
+    // sender: sends to rx to be processed to be sent through the WebSocket
+    // rx: receives all messages that need to be sent through the WebSocket via tx
     let (mut sender, mut rx) = channel::<Message>(16);
-    let mut sender2 = sender.clone();
+    let mut sender2 = sender.clone(); // 2 threads are running, each needs their own copy
 
     eprintln!("Successfully connected");
 
@@ -209,6 +219,7 @@ async fn main() {
     led::set(LEDCommand::Green);
     led::set(LEDCommand::Hold);
 
+    // Captures: rx, tx
     let send_loop = spawn(async move {
         while let Some(msg) = rx.next().await {
             let result = tx.send(msg).await;
@@ -227,6 +238,7 @@ async fn main() {
         }
     });
 
+    // Captures: receiver, sender
     let receive_loop = spawn(async move {
         // Receive loop
         while let Some(Ok(message)) = receiver.next().await {

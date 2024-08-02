@@ -20,6 +20,9 @@ pub fn cleanup_all() {
     button::cleanup();
 }
 
+/// Memory module containing:
+/// - [`peek`] (read memory at `page` offset by `offset`)
+/// - [`poke`] (write to memory at `page` offset by `offset`, setting it to `value`)
 pub(self) mod mem {
     /// Reads (page + offset) with read_volatile
     pub fn peek(page: *mut u32, offset: usize) -> u32 {
