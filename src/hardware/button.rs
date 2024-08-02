@@ -2,14 +2,12 @@
 
 use crate::hardware::{MAP_SIZE, mem::peek};
 use std::{
-    fs::OpenOptions,
     io::{Error, Result as IoResult},
-    os::unix::{fs::OpenOptionsExt, io::AsRawFd},
     ptr::null_mut, 
     sync::OnceLock
 };
 
-use libc::{mmap, munmap, MAP_FAILED, MAP_SHARED, O_RDWR, PROT_READ, PROT_WRITE};
+use libc::{mmap, munmap, MAP_FAILED, MAP_SHARED, PROT_READ, PROT_WRITE};
 
 const GPIO_PAGE: usize = 0x80018000;
 const BUTTON_OFFSET: usize = 0x0610;
@@ -20,18 +18,10 @@ fn get() -> Option<*mut u32> {
     unsafe { GPIO_POINTER.get().cloned() }
 }
 
-pub fn init() -> IoResult<()> {
+pub fn init(fd: i32) -> IoResult<()> {
     if get().is_some() {
         return Ok(());
     }
-
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .custom_flags(O_RDWR)
-        .open("/dev/mem")?;
-
-    let fd = file.as_raw_fd();
 
     let mmaped = unsafe {
         mmap(

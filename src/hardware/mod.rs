@@ -1,6 +1,10 @@
 //! Contains all hardware wrappers.
 
-use std::io::Error as IoError;
+use std::{
+    fs::OpenOptions,
+    io::Error as IoError, 
+    os::{fd::AsRawFd, unix::fs::OpenOptionsExt}
+};
 
 pub(self) const MAP_SIZE: usize = 0x1FFF;
 
@@ -9,8 +13,17 @@ pub mod led;
 pub mod button;
 
 pub fn init_all() -> Result<(), (&'static str, IoError)> {
-    adc::init().map_err(|v| ("ADC", v))?;
-    button::init().map_err(|v| ("Button", v))?;
+    let devmem = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .custom_flags(2)
+        .open("/dev/mem")
+        .map_err(|v| ("failed to open /dev/mem", v))?;
+
+    let fd = devmem.as_raw_fd();
+
+    adc::init(fd).map_err(|v| ("ADC", v))?;
+    button::init(fd).map_err(|v| ("Button", v))?;
 
     Ok(())
 }
