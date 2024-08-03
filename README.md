@@ -71,3 +71,5 @@ along with this program.  If not, see https://www.gnu.org/licenses/.
 
 ## notes
 huge thanks to [Hixie](http://github.com/Hixie) who made the [localbit](https://github.com/Hixie/localbit) repository which helped me program this
+
+reverse engineering notes can be found [here](https://github.com/littleBitsman/cloudbit-software/blob/main/reverse_engineering.md)
