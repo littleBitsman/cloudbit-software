@@ -111,9 +111,7 @@ fn stringify(obj: impl Sized + Serialize) -> String {
 // Hardware wrappers
 mod hardware;
 
-use hardware::adc;
-use hardware::button;
-use hardware::led;
+use hardware::*;
 
 /// set output (as 0x0000 - 0xFFFF)
 /// returns success as a boolean
