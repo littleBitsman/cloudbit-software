@@ -8,6 +8,7 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 execute = "0.2.13"
+libc = "0.2.155"
 mac_address = "1.1.6"
 
 [[bin]]

@@ -53,20 +53,9 @@ impl Display for LEDCommand {
     }
 }
 
-fn set_led(arg: LEDCommand) -> bool {
-    let mut cmd = Command::new("/usr/local/lb/LEDcolor/bin/setColor");
-    cmd.arg(arg.to_string());
-    cmd.execute_check_exit_status_code(0).is_ok()
-}
+mod hardware;
 
-fn get_input() -> u8 {
-    let mut cmd = Command::new("/usr/local/lb/ADC/bin/getADC");
-    cmd.arg("-1");
-    match cmd.execute_output() {
-        Ok(output) => output.stdout[0],
-        Err(_) => 0,
-    }
-}
+use hardware::*;
 
 fn set_output(value: u16) -> bool {
     let mut cmd = Command::new("/usr/local/lb/DAC/bin/setDAC");
@@ -122,6 +111,14 @@ fn start(url: &str) {
                     set_output(num);
                     println!("[output] received packet: {}", num);
                 }
+                66 => {
+                    // 66 = "B"
+                    let mut msg = mac_bytes_2.clone();
+                    msg.push(66);
+                    msg.push(button::read() as u8);
+
+                    clone.send(&msg).expect("[button] failed to send button state packet");
+                }
                 _ => println!("{:?}", buf),
             }
         })
@@ -134,8 +131,9 @@ fn start(url: &str) {
     msg.push(0);
 
     loop {
-        if get_input() != current {
-            current = get_input();
+        let now = adc::read();
+        if now != current {
+            current = now;
             msg[13] = current;
             socket
                 .send(&msg)
@@ -148,16 +146,18 @@ fn main() {
     let url = read_to_string("/usr/local/lb/cloud_client/udp_server_url")
         .expect("server URL is required since there is no default");
 
-    set_led(LEDCommand::Green);
-    set_led(LEDCommand::Blink);
+    hardware::init_all().map_err(|(origin, err)| format!("failed to initialize {origin}: {err}")).unwrap();
+
+    led::set(LEDCommand::Green);
+    led::set(LEDCommand::Blink);
     loop {
         let result = catch_unwind(|| start(&url));
         match result {
             Ok(()) => {}
             Err(_) => {
                 eprintln!("error occured; attempting to restart");
-                set_led(LEDCommand::Red);
-                set_led(LEDCommand::Blink);
+                led::set(LEDCommand::Red);
+                led::set(LEDCommand::Blink);
                 sleep(time::Duration::from_secs(2));
             }
         }
