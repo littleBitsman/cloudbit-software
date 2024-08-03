@@ -27,7 +27,7 @@ pub fn set(arg: LEDCommand) -> bool {
     set_raw(arg.to_string())
 }
 
-/// set led using [`LEDCommandChain`]
+/// set led using a [`Vec<LEDCommand>`]
 ///
 /// returns success as a boolean
 pub fn set_many(arg: Vec<LEDCommand>) -> bool {
