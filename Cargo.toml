@@ -20,3 +20,7 @@ url = "2.5.0"
 [[bin]]
 name = "cloud_client"
 path = "src/main.rs"
+
+[profile.release]
+strip = "debuginfo"
+lto = "thin"
