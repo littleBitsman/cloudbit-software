@@ -14,3 +14,7 @@ mac_address = "1.1.6"
 [[bin]]
 name = "cloud_client"
 path = "src/main.rs"
+
+[profile.release]
+strip = "debuginfo"
+lto = "thin"
