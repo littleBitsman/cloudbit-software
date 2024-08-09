@@ -45,11 +45,6 @@ pub fn init_all() -> Result<(), (&'static str, IoError)> {
     Ok(())
 }
 
-pub fn cleanup_all() {
-    adc::cleanup();
-    button::cleanup();
-}
-
 /// Memory module containing:
 /// - [`peek`] (read memory at `page` offset by `offset`)
 /// - [`poke`] (write to memory at `page` offset by `offset`, setting it to `value`)

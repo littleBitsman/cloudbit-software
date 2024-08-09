@@ -24,7 +24,7 @@ use std::{
     sync::OnceLock
 };
 
-use libc::{mmap, munmap, MAP_FAILED, MAP_SHARED, PROT_READ, PROT_WRITE};
+use libc::{mmap, MAP_FAILED, MAP_SHARED, PROT_READ, PROT_WRITE};
 
 const GPIO_PAGE: usize = 0x80018000;
 const BUTTON_OFFSET: usize = 0x0610;
@@ -70,10 +70,4 @@ pub fn read() -> bool {
         // For some reason this is inverted
         (peek(v, BUTTON_OFFSET) & 0x80) == 0
     })
-}
-
-pub fn cleanup() {
-    if let Some(pointer) = get() {
-        unsafe { munmap(pointer as *mut _, MAP_SIZE) };
-    }
 }

@@ -24,7 +24,7 @@ use std::{
     sync::OnceLock,
 };
 
-use libc::{mmap, munmap, MAP_FAILED, MAP_SHARED, PROT_READ, PROT_WRITE};
+use libc::{mmap, MAP_FAILED, MAP_SHARED, PROT_READ, PROT_WRITE};
 
 pub const ADC_PAGE: usize = 0x80050000;
 pub const ADC_SCHED_OFFSET: usize = 0x0004;
@@ -87,11 +87,5 @@ pub fn read() -> u8 {
     } else {
         println!("warning: no ADC page pointer found");
         0
-    }
-}
-
-pub fn cleanup() {
-    if let Some(pointer) = get() {
-        unsafe { munmap(pointer as *mut _, MAP_SIZE) };
     }
 }

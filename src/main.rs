@@ -384,7 +384,8 @@ async fn main() {
         eprintln!("{}", v.to_string());
         send_loop.abort();
         receive_loop.abort();
-        hardware::cleanup_all();
+        // Turns out the memory mapping is removed after the process exits lol
+        // hardware::cleanup_all();
     }));
 
     hardware::init_all().map_err(|(origin, err)| format!("failed to initialize {origin}: {err}")).unwrap();
