@@ -23,7 +23,7 @@ use std::{
     os::{fd::AsRawFd, unix::fs::OpenOptionsExt}
 };
 
-pub(self) const MAP_SIZE: usize = 0x1FFF;
+const MAP_SIZE: usize = 0x1FFF;
 
 pub mod adc;
 pub mod led;
@@ -33,7 +33,7 @@ pub fn init_all() -> Result<(), (&'static str, IoError)> {
     let devmem = OpenOptions::new()
         .read(true)
         .write(true)
-        .custom_flags(2)
+        .custom_flags(2) // O_RDWR = 2
         .open("/dev/mem")
         .map_err(|v| ("failed to open /dev/mem", v))?;
 
@@ -48,14 +48,18 @@ pub fn init_all() -> Result<(), (&'static str, IoError)> {
 /// Memory module containing:
 /// - [`peek`] (read memory at `page` offset by `offset`)
 /// - [`poke`] (write to memory at `page` offset by `offset`, setting it to `value`)
-pub(self) mod mem {
-    /// Reads (page + offset) with read_volatile
+mod mem {
+    /// Reads memory at (page + offset) with [`std::ptr::read_volatile`]
     pub fn peek(page: *mut u32, offset: usize) -> u32 {
+        // SAFETY: it is up to the caller to ensure that the pointer is valid
+        // (see std::ptr::read_volatile)
         unsafe { page.byte_add(offset).read_volatile() }
     }
 
-    /// Sets (page + offset) with write_volatile
+    /// Sets memory at (page + offset) with [`std::ptr::write_volatile`]
     pub fn poke(page: *mut u32, offset: usize, value: u32) {
+        // SAFETY: it is up to the caller to ensure that the pointer is valid
+        // (see std::ptr::write_volatile)
         unsafe { page.byte_add(offset).write_volatile(value) }
     }
 }

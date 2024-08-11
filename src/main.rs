@@ -1,28 +1,34 @@
 // This file is part of cloudbit-software.
 //
 // cloudbit-software - an alternative software for the littleBits cloudBit.
-// 
+//
 // Copyright (C) 2024 littleBitsman
-// 
-// cloudbit-software is free software: you can redistribute it and/or modify 
-// it under the terms of the GNU General Public License as published by 
-// the Free Software Foundation, either version 3 of the License, or 
+//
+// cloudbit-software is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// cloudbit-software is distributed in the hope that it will be useful, but 
-// WITHOUT ANY WARRANTY; without even the implied warranty of 
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+// cloudbit-software is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
-// You should have received a copy of the GNU General Public License 
+// You should have received a copy of the GNU General Public License
 // along with this program. If not, see https://www.gnu.org/licenses/.
 
-const DEFAULT_URL: &'static str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
+#![warn(
+    clippy::undocumented_unsafe_blocks,
+    clippy::absolute_paths,
+    clippy::as_underscore,
+    clippy::todo
+)]
+
+const DEFAULT_URL: &str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
 
 const INPUT_DELTA_THRESHOLD: u8 = 2;
 
 use execute::Execute;
 use futures::{channel::mpsc::channel, SinkExt, StreamExt};
 use mac_address::get_mac_address;
-use once_cell::sync::Lazy;
 use serde::Serialize;
 use serde_json::{from_str, json, to_string, Value as JsonValue};
 use std::{
@@ -34,7 +40,7 @@ use std::{
     str::FromStr as _,
     time::Duration,
 };
-use sysinfo::{Pid, System};
+use sysinfo::System;
 use tokio::{spawn, time::sleep};
 use tokio_tungstenite::{
     connect_async,
@@ -44,9 +50,6 @@ use tokio_tungstenite::{
     },
 };
 use url::Url;
-
-const SYSINFO: Lazy<System> = Lazy::new(|| System::new_all());
-const PID: Lazy<Pid> = Lazy::new(|| Pid::from_u32(get_pid()));
 
 /// commands for LED as an enum
 #[allow(dead_code)]
@@ -88,9 +91,9 @@ impl TryFrom<String> for LEDCommand {
     type Error = ();
 }
 
-impl Into<String> for LEDCommand {
-    fn into(self) -> String {
-        String::from(match self {
+impl Display for LEDCommand {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        let s = String::from(match self {
             Self::Red => "red",
             Self::Green => "green",
             Self::Blue => "blue",
@@ -103,14 +106,8 @@ impl Into<String> for LEDCommand {
             Self::Clownbarf => "clownbarf",
             Self::Blink => "blink",
             Self::Hold => "hold",
-        })
-    }
-}
-
-impl Display for LEDCommand {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let s: String = (*self).into();
-        write!(f, "{s}")
+        });
+        f.write_str(&s)
     }
 }
 
@@ -129,10 +126,10 @@ use hardware::*;
 
 /// set output (as 0x0000 - 0xFFFF)
 /// returns success as a boolean
-/// 
+///
 /// This does NOT have a memory-based wrapper due to the complexity of the DAC.
-/// You should NEVER be calling this in very rapid succession (meaning, 
-/// many, many times per second for long periods of time, doing this for 
+/// You should NEVER be calling this in very rapid succession (meaning,
+/// many, many times per second for long periods of time, doing this for
 /// <2 seconds at a time with long-ish breaks should be safe)
 fn set_output(value: u16) -> bool {
     Command::new("/usr/local/lb/DAC/bin/setDAC")
@@ -152,7 +149,7 @@ async fn main() {
 
     let default_url = Url::from_str(DEFAULT_URL).unwrap();
 
-    // Parse url in /usr/local/lb/cloud_client/server_url if it exists, 
+    // Parse url in /usr/local/lb/cloud_client/server_url if it exists,
     // use DEFAULT_URL if it doesn't or is not a valid URL.
     let mut url = Url::from_str(
         &read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or(DEFAULT_URL.to_string()),
@@ -176,7 +173,7 @@ async fn main() {
 
     eprintln!(
         "Attempting to connect to {} ({})",
-        url.to_string(),
+        url,
         url.host_str().unwrap()
     );
 
@@ -257,7 +254,7 @@ async fn main() {
             match message {
                 Message::Close(a) => {
                     // Got a close message, so send a close message and return
-                    let _ = sender.send(Message::Close(a));
+                    let _ = sender.send(Message::Close(a)).await;
                 }
                 Message::Ping(data) => {
                     match sender.send(Message::Pong(data)).await {
@@ -272,104 +269,97 @@ async fn main() {
                 Message::Text(data) => {
                     eprintln!("{}", data);
                     if let Ok(parsed) = from_str::<JsonValue>(&data) {
-                        if !parsed.is_object() {
-                            return eprintln!("bad packet from server");
-                        }
-                        match parsed {
-                            JsonValue::Object(ref obj) => {
-                                if let Some(opcode) = obj["opcode"].as_u64() {
-                                    match opcode {
-                                        0x2 => {
-                                            // OUTPUT
-                                            if let Some(new) = obj["data"]["value"].as_u64() {
-                                                set_output(new.min(u16::MAX as u64) as u16);
-                                            } else {
-                                                eprintln!(
-                                                    "bad output packet: {}",
-                                                    to_string(&obj).unwrap()
-                                                )
-                                            }
+                        if let JsonValue::Object(ref obj) = parsed {
+                            if let Some(opcode) = obj["opcode"].as_u64() {
+                                match opcode {
+                                    0x2 => {
+                                        // OUTPUT
+                                        if let Some(new) = obj["data"]["value"].as_u64() {
+                                            set_output(new.min(u16::MAX as u64) as u16);
+                                        } else {
+                                            eprintln!(
+                                                "bad output packet: {}",
+                                                to_string(&obj).unwrap()
+                                            )
                                         }
-                                        // Any numbers that match 0xFX where X is any digit is a developer
-                                        // opcode (LED set, button status, etc.)
+                                    }
+                                    // Any numbers that match 0xFX where X is any digit is a developer
+                                    // opcode (LED set, button status, etc.)
 
-                                        // Set LED
-                                        0xF0 => {
-                                            if let Some(command) = obj["led_command"].as_str() {
-                                                let command =
-                                                    command.replace(", ", " ").replace(",", " ");
+                                    // Set LED
+                                    0xF0 => {
+                                        if let Some(command) = obj["led_command"].as_str() {
+                                            let command =
+                                                command.replace(", ", " ").replace(",", " ");
 
-                                                let mut chain = Vec::new();
+                                            let mut chain = Vec::new();
 
-                                                for item in command.split(" ") {
-                                                    if let Ok(cmd) =
-                                                        LEDCommand::try_from(item.to_string())
-                                                    {
-                                                        chain.push(cmd)
-                                                    }
+                                            for item in command.split(" ") {
+                                                if let Ok(cmd) =
+                                                    LEDCommand::try_from(item.to_string())
+                                                {
+                                                    chain.push(cmd)
                                                 }
-                                                led::set_many(chain);
-                                            } else {
-                                                eprintln!(
-                                                    "bad set LED packet: {}",
-                                                    stringify(parsed)
-                                                )
                                             }
+                                            led::set_many(chain);
+                                        } else {
+                                            eprintln!("bad set LED packet: {}", stringify(parsed))
                                         }
+                                    }
 
-                                        // TODO #4 Get button (it is never sent normally)
-                                        0xF1 => 
+                                    // TODO #4 Get button (it is never sent normally)
+                                    0xF1 => sender
+                                        .send(Message::Text(stringify(json!({
+                                            "opcode": 0xF2, // 0xF2 is button state (returned from 0xF1)
+                                            "data": {
+                                                "button": button::read()
+                                            }
+                                        }))))
+                                        .await
+                                        .unwrap(),
+
+                                    // Get system stats (e.g., memory usage, CPU usage)
+                                    // Note: you should NOT be polling this
+                                    0xF3 => {
+                                        let mut sender = sender.clone();
+                                        spawn(async move {
+                                            let mut sysinfo = System::new_all();
+                                            let pid = (get_pid() as usize).into();
+                                            sysinfo.refresh_cpu();
+                                            sysinfo.refresh_memory();
+                                            sysinfo.refresh_process(pid);
+
+                                            sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL).await;
+
+                                            sysinfo.refresh_cpu();
+
+                                            let process = sysinfo.process(pid).unwrap();
+                                            let cpu = process.cpu_usage();
+                                            let mem_bytes = process.memory();
+                                            let total_mem = sysinfo.total_memory();
+                                            let mem_percent =
+                                                ((mem_bytes as f64) / (total_mem as f64)) * 100.0;
+
+                                            // Opcode 0xF4 is system stats (RETURNED from 0xF3)
                                             sender
-                                                .send(Message::Text(stringify(json!({
-                                                    "opcode": 0xF2, // 0xF2 is button state (returned from 0xF1)
-                                                    "data": {
-                                                        "button": button::read()
+                                                .send(Message::text(stringify(json!({
+                                                    "opcode": 0xF4,
+                                                    "stats": {
+                                                        "cpu_usage": cpu,
+                                                        "memory_usage": mem_bytes,
+                                                        "total_memory": total_mem,
+                                                        "memory_usage_percent": mem_percent
                                                     }
                                                 }))))
                                                 .await
-                                                .unwrap(),
-
-                                        // Get system stats (e.g., memory usage, CPU usage)
-                                        0xF3 => {
-                                            let mut sender = sender.clone();
-                                            spawn(async move {
-                                                let mut sysinfo = SYSINFO;
-                                                sysinfo.refresh_cpu();
-                                                sysinfo.refresh_memory();
-                                                sysinfo.refresh_process(*PID);
-
-                                                sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL).await;
-
-                                                sysinfo.refresh_cpu();
-
-                                                let process = sysinfo.process(*PID).unwrap();
-                                                let cpu = process.cpu_usage();
-                                                let mem_bytes = process.memory();
-                                                let total_mem = sysinfo.total_memory();
-                                                let mem_percent = ((mem_bytes as f64)
-                                                    / (total_mem as f64))
-                                                    * 100.0;
-
-                                                // Opcode 0xF4 is system stats (RETURNED from 0xF3)
-                                                sender
-                                                    .send(Message::text(stringify(json!({
-                                                        "opcode": 0xF4,
-                                                        "stats": {
-                                                            "cpu_usage": cpu,
-                                                            "memory_usage": mem_bytes,
-                                                            "total_memory": total_mem,
-                                                            "memory_usage_percent": mem_percent
-                                                        }
-                                                    }))))
-                                                    .await
-                                                    .unwrap();
-                                            });
-                                        }
-                                        _ => eprintln!("invalid opcode: {}", opcode),
+                                                .unwrap();
+                                        });
                                     }
+                                    _ => eprintln!("invalid opcode: {}", opcode),
                                 }
                             }
-                            _ => {}
+                        } else {
+                            return eprintln!("bad packet from server");
                         }
                     } else {
                         eprintln!("bad packet from server")
@@ -381,14 +371,16 @@ async fn main() {
     });
 
     set_panic_hook(Box::new(move |v| {
-        eprintln!("{}", v.to_string());
+        eprintln!("{}", v);
         send_loop.abort();
         receive_loop.abort();
         // Turns out the memory mapping is removed after the process exits lol
         // hardware::cleanup_all();
     }));
 
-    hardware::init_all().map_err(|(origin, err)| format!("failed to initialize {origin}: {err}")).unwrap();
+    hardware::init_all()
+        .map_err(|(origin, err)| format!("failed to initialize {origin}: {err}"))
+        .unwrap();
 
     // Main IO loop
     loop {

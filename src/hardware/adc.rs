@@ -19,7 +19,7 @@
 
 use crate::hardware::{MAP_SIZE, mem::{peek, poke}};
 use std::{
-    io::{Error, Result as IoResult},
+    io::{Error as IoError, Result as IoResult},
     ptr::null_mut,
     sync::OnceLock,
 };
@@ -34,6 +34,7 @@ pub const ADC_CLEAR_OFFSET: usize = 0x0018;
 static mut ADC_POINTER: OnceLock<*mut u32> = OnceLock::new();
 
 fn get() -> Option<*mut u32> {
+    // SAFETY: TODO
     unsafe { ADC_POINTER.get().cloned() }
 }
 
@@ -42,6 +43,8 @@ pub fn init(fd: i32) -> IoResult<()> {
         return Ok(())
     }
 
+    // SAFETY: FFI functions are marked unsafe since the compiler cannot verify
+    // behavior, but mmap is OK
     let mmaped = unsafe {
         mmap(
             null_mut(),
@@ -49,14 +52,15 @@ pub fn init(fd: i32) -> IoResult<()> {
             PROT_READ | PROT_WRITE,
             MAP_SHARED,
             fd,
-            ADC_PAGE as _,
+            ADC_PAGE as i64,
         )
     };
 
     if mmaped == MAP_FAILED {
-        return Err(Error::last_os_error());
+        return Err(IoError::last_os_error());
     }
     
+    // SAFETY: TODO
     unsafe {
         ADC_POINTER.set(mmaped as *mut u32).unwrap();
     }

@@ -19,7 +19,7 @@
 
 use crate::hardware::{MAP_SIZE, mem::peek};
 use std::{
-    io::{Error, Result as IoResult},
+    io::{Error as IoError, Result as IoResult},
     ptr::null_mut, 
     sync::OnceLock
 };
@@ -32,6 +32,7 @@ const BUTTON_OFFSET: usize = 0x0610;
 static mut GPIO_POINTER: OnceLock<*mut u32> = OnceLock::new();
 
 fn get() -> Option<*mut u32> {
+    // SAFETY: TODO
     unsafe { GPIO_POINTER.get().cloned() }
 }
 
@@ -40,6 +41,8 @@ pub fn init(fd: i32) -> IoResult<()> {
         return Ok(());
     }
 
+    // SAFETY: FFI functions are marked unsafe since the compiler cannot verify
+    // behavior, but mmap is OK
     let mmaped = unsafe {
         mmap(
             null_mut(),
@@ -47,14 +50,15 @@ pub fn init(fd: i32) -> IoResult<()> {
             PROT_READ | PROT_WRITE,
             MAP_SHARED,
             fd,
-            GPIO_PAGE as _,
+            GPIO_PAGE as i64,
         )
     };
 
     if mmaped == MAP_FAILED {
-        return Err(Error::last_os_error());
+        return Err(IoError::last_os_error());
     }
 
+    // SAFETY: TODO
     unsafe {
         GPIO_POINTER.set(mmaped as *mut u32).unwrap();
     }
