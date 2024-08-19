@@ -85,7 +85,7 @@ impl TryFrom<String> for LEDCommand {
             "clownbarf" => Ok(Self::Clownbarf),
             "blink" => Ok(Self::Blink),
             "hold" => Ok(Self::Hold),
-            _ => Err(()),
+            _ => Err(())
         }
     }
 
@@ -234,9 +234,7 @@ async fn main() {
         while let Some(msg) = rx.next().await {
             let result = tx.send(msg).await;
             match result {
-                Err(Error::AlreadyClosed | Error::ConnectionClosed) => {
-                    panic!("connection closed, rebooting to attempt reconnection")
-                }
+                Err(Error::AlreadyClosed | Error::ConnectionClosed) => panic!("connection closed, rebooting to attempt reconnection"),
                 Err(Error::Io(err)) => {
                     if err.kind() == IoErrorKind::BrokenPipe {
                         panic!("connection closed, rebooting to attempt reconnection")
@@ -263,7 +261,7 @@ async fn main() {
                         Ok(()) => (),
                         Err(e) => {
                             eprintln!("Receive Loop: {:?}", e);
-                            return;
+                            return
                         }
                     }
                 }
@@ -356,7 +354,7 @@ async fn main() {
                                                 .unwrap();
                                         });
                                     }
-                                    _ => eprintln!("invalid opcode: {}", opcode),
+                                    _ => eprintln!("invalid opcode: {}", opcode)
                                 }
                             }
                         } else {
@@ -366,7 +364,7 @@ async fn main() {
                         eprintln!("bad packet from server")
                     }
                 }
-                _ => eprintln!("unknown content"),
+                _ => eprintln!("unknown content")
             }
         }
     });
