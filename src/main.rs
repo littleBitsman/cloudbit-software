@@ -195,6 +195,7 @@ async fn main() {
     let client = loop {
         led::set(LEDCommand::Teal);
         led::set(LEDCommand::Blink);
+        // I wanted to avoid using Clone here but oh well
         if let Ok((client, _)) = connect_async(request.clone()).await {
             break client;
         } else {

@@ -24,7 +24,7 @@ The auto installer can be found [here](https://github.com/littleBitsman/cloudbit
 
 **If you want the binary to use a different server than the default, do the following:**
 1. create a file `~/usr/local/lb/cloud_client/server_url`
-2. put the FULL URL in the file, including `ws://` or `wss://` at the start - if the URLis invalid the default will automatically be used
+2. put the FULL URL in the file, including `ws://` or `wss://` at the start - if the URL is invalid the default will automatically be used
 
 *note that all steps are automatically handled by the auto installer, after using it there is no further action required.*
 
