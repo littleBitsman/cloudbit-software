@@ -33,6 +33,14 @@ fn get() -> Option<*mut u32> {
     unsafe { GPIO_POINTER.get().cloned() }
 }
 
+/// Initalizes button memory
+fn mem_init(page: *mut u32) {
+    // See hardware/adc.rs at line 40 for more info on why this is commented out
+    // poke(page, 0x0124, 0x0000C000);
+    // poke(page, 0x0718, 0x00000080);
+    let _ = page; // this makes page used so it doesn't create build warnings
+}
+
 pub fn init(fd: i32) -> IoResult<()> {
     if get().is_some() {
         return Ok(())
@@ -42,8 +50,10 @@ pub fn init(fd: i32) -> IoResult<()> {
 
     // SAFETY: TODO
     unsafe {
-        GPIO_POINTER.set(mmaped as *mut u32).unwrap();
+        GPIO_POINTER.set(mmaped).unwrap();
     }
+
+    mem_init(mmaped);
 
     Ok(())
 }

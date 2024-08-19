@@ -35,6 +35,23 @@ fn get() -> Option<*mut u32> {
     unsafe { ADC_POINTER.get().cloned() }
 }
 
+/// Initalizes ADC memory
+fn mem_init(page: *mut u32) {
+    // I've left this commented out since ADC.d already does this for me.
+    // In the future this will be executed and the pre-existing software 
+    // for the ADC will be disabled (same with the button and possibly LED).
+    // The DAC is more complex, so that's a problem for later.
+    /*
+    poke(page, 0x0008, 0x40000000);
+    poke(page, 0x0004, 0x00000001);
+    poke(page, 0x0028, 0x01000000);
+    poke(page, 0x0014, 0x00010000);
+    poke(page, 0x0034, 0x00000001);
+    poke(page, 0x0024, 0x01000000);
+    */
+    poke(page, 0x0144, 0x00000980); // Sets the last 12 bits like this: 0b1001_1000_0000
+}
+
 pub fn init(fd: i32) -> IoResult<()> {
     if get().is_some() {
         return Ok(())
@@ -44,19 +61,24 @@ pub fn init(fd: i32) -> IoResult<()> {
     
     // SAFETY: TODO
     unsafe {
-        ADC_POINTER.set(mmaped as *mut u32).unwrap();
+        ADC_POINTER.set(mmaped).unwrap();
     }
+
+    mem_init(mmaped);
 
     Ok(())
 }
 
+/// Reads the ADC (also known as the *LR*ADC, or ***L***ow-***R***esolution **A**nalog to **D**igital **C**onverter)
 pub fn read() -> u8 {
     if let Some(pointer) = get() {
         poke(pointer, ADC_SCHED_OFFSET, 0x1);
 
         {
             let has_high_bit = peek(pointer, ADC_VALUE_OFFSET) >= 0x80000000;
-            // There isn't a delay here since in C (see https://github.com/Hixie/localbit/blob/master/localbit.c#L346) it works that way so I'll leave it like this in Rust too 
+            // There isn't a delay here since in C 
+            // (see https://github.com/Hixie/localbit/blob/master/localbit.c#L346) 
+            // it works that way so I'll leave it like this in Rust too 
             while (peek(pointer, ADC_VALUE_OFFSET) >= 0x80000000) == has_high_bit { }
         }
 
@@ -68,8 +90,9 @@ pub fn read() -> u8 {
             (31 * value - 0x1838) / 11
         };
 
-        // This could panic if value was out of bounds of u8 after dividing by 16, so it gets clamped to avoid that
-        (value.clamp(0, 4095) / 16) as u8
+        // That comment before was a lie
+        // the `as` keyword clamps automatically
+        (value / 16) as u8
     } else {
         println!("warning: no ADC page pointer found");
         0

@@ -85,7 +85,7 @@ mod mem {
         if ptr == MAP_FAILED {
             Err(IoError::last_os_error())
         } else {
-            Ok(ptr as *mut T)
+            Ok(ptr.cast())
         }
     }
 }

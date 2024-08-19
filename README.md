@@ -49,7 +49,28 @@ When the `opcode` is equal to `0x1` (INPUT) or `0x2` (OUTPUT), a `data` object w
 
 Opcode `0x3` (IDENTIFY) is used right after the WebSocket handshake completes and the connection is established. IDENTIFY is sent from the client, but should never be sent from the server. An IDENTIFY payload has a `mac_address` (string) property and a `cb_id` (string) property.
 
-Opcode `0x4` (LED) is used if you ever want to tell the cloudBit to change the LED color at any time. A `commands` property (string) is expected. It can be any combination of `red`, `green`, `blue`, `yellow`, `teal`, `purple` (or `violet`), `white`, `off`, `blink` and `clownbarf`, with whitespace separating each command (newlines are removed).
+### developer tools
+These are opcodes that are available for use for any devs wanting to customize their cloudBits.
+
+- `0xF0` (LED) is used if you ever want to tell the cloudBit to change the LED color at any time. A `commands` property (string) is expected. It can be any combination of `red`, `green`, `blue`, `yellow`, `teal`, `purple` (or `violet`), `white`, `off`, `blink` and `clownbarf`, with whitespace separating each command.
+- `0xF1` (Button) requests that the cloudBit sends its current button status (true = pressed, false = not pressed). No fields are required other than the opcode itself.
+    - `0xF2` is the return opcode (contains the button status)
+- `0xF3` requests that the cloudBit sends its current system stats (currently sends CPU usage as a percent, memory usage as a percent and in bytes, and total memory in the system in bytes). No fields are required other than the opcode itself.
+    - `0xF4` is the return opcode (contains the statistics)
+        - An example packet *could* look like this (note that `0xF4` is not what the opcode would look like in JSON)
+        ```js
+        {
+            "opcode": 0xF4,
+            "stats": {
+                "cpu_usage": 10.6,
+                "memory_usage": 5776,
+                "total_memory": 10,
+                "memory_usage_percent": 57760
+            }
+        }
+        ```
+    - See the [Rust sysinfo crate](https://crates.io/crates/sysinfo) for more info on how system stats are retrieved
+    - **WARNING: DO NOT POLL SYSTEM STATISTICS**
 
 # license
 cloudbit-software - an alternative software for the littleBits cloudBit.

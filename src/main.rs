@@ -20,7 +20,8 @@
     clippy::absolute_paths,
     clippy::as_underscore,
     clippy::todo,
-    clippy::use_self
+    clippy::use_self,
+    clippy::semicolon_inside_block
 )]
 
 const DEFAULT_URL: &str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
