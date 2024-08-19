@@ -4,15 +4,11 @@
 # reads from ROM every time and writes hash and mac to temporary files
 # also decides whether to do testing or enter "normal" mode.
 
+
 # include global variables
 source /etc/lb_scripts.conf
 
 sudo chmod 777 /usr/local/lb/cloud_client/bin/cloud_client
-
-systemctl is-active cloudclient --quiet
-if (( ! $? )); then
-	systemctl stop cloudclient
-fi
 
 printf "Checking cloud identity on ROM... "
 
@@ -95,9 +91,6 @@ if [[ $status != 0 ]] ; then
 	sleep 3
 	systemctl halt
 fi
-
-# pretty sure this literally cannot happen
-# - littleBitsman
 
 # check if /var/lb/runTestStatus isn't empty
 # this implies tests were run - set LED green if they passed then halt system
