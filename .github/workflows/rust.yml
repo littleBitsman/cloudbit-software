@@ -36,8 +36,9 @@ jobs:
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        cp ./cloud_client_${{matrix.version}} ./cloud_client
         {
-          git commit -a -m "build"
+          git commit -am "build"
           git push
         } || echo "nothing changed"
     - name: Upload output file
