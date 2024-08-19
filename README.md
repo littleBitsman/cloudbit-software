@@ -45,16 +45,53 @@ The WebSocket exchanges and expects JSON strings/buffers on the stream. JSON not
 
 The root *object* should always have an `opcode` key, whose value should be a number.
 
-When the `opcode` is equal to `0x1` (INPUT) or `0x2` (OUTPUT), a `data` object with the property `value` (number) can be (for INPUT payloads)/is (for OUTPUT payloads) expected in the root.
+When the `opcode` is equal to `0x1` (INPUT) or `0x2` (OUTPUT), a `data` object with the property `value` (number).
+The `data` object must exist for OUTPUT packets, and the `data` object is **guaranteed** to exist for INPUT packets. INPUT should never be sent by the server, and OUTPUT will never be sent by the client.
 
-Opcode `0x3` (IDENTIFY) is used right after the WebSocket handshake completes and the connection is established. IDENTIFY is sent from the client, but should never be sent from the server. An IDENTIFY payload has a `mac_address` (string) property and a `cb_id` (string) property.
+An INPUT or OUTPUT packet could look like this (note that `0x1` or `0x2` are not what the opcode value(s) would look like in JSON):
+```js
+// INPUT
+{
+    "opcode": 0x1,
+    "data": {
+        "value": 0
+    }
+}
+// OUTPUT
+{
+    "opcode": 0x2,
+    "data": {
+        "value": 0
+    }
+}
+```
 
-### developer tools
+Opcode `0x3` (IDENTIFY) is used right after the WebSocket handshake completes and the connection is established. IDENTIFY is sent from the client and should never be sent from the server. An IDENTIFY payload has a `mac_address` (string) property and a `cb_id` (string) property. 
+
+An IDENTIFY packet could look like this (note that `0x3` is not what the opcode value would look like in JSON):
+```js
+{
+    "opcode": 0x3,
+    "mac_address": "00:00:00:00:00:00",
+    "cb_id": "some_hash_thing"
+}
+```
+
+### developer opcodes
 These are opcodes that are available for use for any devs wanting to customize their cloudBits.
 
 - `0xF0` (LED) is used if you ever want to tell the cloudBit to change the LED color at any time. A `commands` property (string) is expected. It can be any combination of `red`, `green`, `blue`, `yellow`, `teal`, `purple` (or `violet`), `white`, `off`, `blink` and `clownbarf`, with whitespace separating each command.
-- `0xF1` (Button) requests that the cloudBit sends its current button status (true = pressed, false = not pressed). No fields are required other than the opcode itself.
+- `0xF1` (Button) requests that the cloudBit sends its current button status (true = pressed, false = not pressed). No fields are required other than the opcode itself. *Remember that when the button is pressed **and held** the cloudBit will enter commissioning mode and will disconnect from the server.*
     - `0xF2` is the return opcode (contains the button status)
+        - An example button return opcode *could* look like this (note that `0xF2` is not what the opcode would look like in JSON)
+        ```js
+        {
+            "opcode": 0xF2,
+            "data": {
+                "button": true
+            }
+        }
+        ```
 - `0xF3` requests that the cloudBit sends its current system stats (currently sends CPU usage as a percent, memory usage as a percent and in bytes, and total memory in the system in bytes). No fields are required other than the opcode itself.
     - `0xF4` is the return opcode (contains the statistics)
         - An example packet *could* look like this (note that `0xF4` is not what the opcode would look like in JSON)
@@ -64,8 +101,8 @@ These are opcodes that are available for use for any devs wanting to customize t
             "stats": {
                 "cpu_usage": 10.6,
                 "memory_usage": 5776,
-                "total_memory": 10,
-                "memory_usage_percent": 57760
+                "memory_usage_percent": 10,
+                "total_memory": 57760
             }
         }
         ```
