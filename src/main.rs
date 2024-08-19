@@ -307,7 +307,7 @@ async fn main() {
                                         }
                                     }
 
-                                    // TODO #4 Get button (it is never sent normally)
+                                    // Get button (it is never sent normally)
                                     0xF1 => sender
                                         .send(Message::Text(stringify(json!({
                                             "opcode": 0xF2, // 0xF2 is button state (returned from 0xF1)
@@ -320,6 +320,7 @@ async fn main() {
 
                                     // Get system stats (e.g., memory usage, CPU usage)
                                     // Note: you should NOT be polling this
+                                    // More notes can be found in protocol details
                                     0xF3 => {
                                         let mut sender = sender.clone();
                                         spawn(async move {
