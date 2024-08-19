@@ -17,14 +17,11 @@
 
 //! ADC wrapper
 
-use crate::hardware::{MAP_SIZE, mem::{peek, poke}};
+use crate::hardware::mem::{map, peek, poke};
 use std::{
-    io::{Error as IoError, Result as IoResult},
-    ptr::null_mut,
+    io::Result as IoResult,
     sync::OnceLock,
 };
-
-use libc::{mmap, MAP_FAILED, MAP_SHARED, PROT_READ, PROT_WRITE};
 
 pub const ADC_PAGE: usize = 0x80050000;
 pub const ADC_SCHED_OFFSET: usize = 0x0004;
@@ -43,22 +40,7 @@ pub fn init(fd: i32) -> IoResult<()> {
         return Ok(())
     }
 
-    // SAFETY: FFI functions are marked unsafe since the compiler cannot verify
-    // behavior, but mmap is OK
-    let mmaped = unsafe {
-        mmap(
-            null_mut(),
-            MAP_SIZE,
-            PROT_READ | PROT_WRITE,
-            MAP_SHARED,
-            fd,
-            ADC_PAGE as i64,
-        )
-    };
-
-    if mmaped == MAP_FAILED {
-        return Err(IoError::last_os_error());
-    }
+    let mmaped = map(fd, ADC_PAGE as i64)?;
     
     // SAFETY: TODO
     unsafe {

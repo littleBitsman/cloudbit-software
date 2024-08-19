@@ -17,14 +17,11 @@
 
 //! Button wrapper
 
-use crate::hardware::{MAP_SIZE, mem::peek};
+use crate::hardware::mem::{map, peek};
 use std::{
-    io::{Error as IoError, Result as IoResult},
-    ptr::null_mut, 
+    io::Result as IoResult,
     sync::OnceLock
 };
-
-use libc::{mmap, MAP_FAILED, MAP_SHARED, PROT_READ, PROT_WRITE};
 
 const GPIO_PAGE: usize = 0x80018000;
 const BUTTON_OFFSET: usize = 0x0610;
@@ -38,25 +35,10 @@ fn get() -> Option<*mut u32> {
 
 pub fn init(fd: i32) -> IoResult<()> {
     if get().is_some() {
-        return Ok(());
+        return Ok(())
     }
-
-    // SAFETY: FFI functions are marked unsafe since the compiler cannot verify
-    // behavior, but mmap is OK
-    let mmaped = unsafe {
-        mmap(
-            null_mut(),
-            MAP_SIZE,
-            PROT_READ | PROT_WRITE,
-            MAP_SHARED,
-            fd,
-            GPIO_PAGE as i64,
-        )
-    };
-
-    if mmaped == MAP_FAILED {
-        return Err(IoError::last_os_error());
-    }
+    
+    let mmaped = map(fd, GPIO_PAGE as i64)?;
 
     // SAFETY: TODO
     unsafe {
