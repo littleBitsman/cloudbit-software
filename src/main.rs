@@ -40,10 +40,9 @@ use std::{
     io::ErrorKind as IoErrorKind,
     panic::set_hook as set_panic_hook,
     process::{id as get_pid, Command},
-    str::FromStr as _,
     time::Duration,
 };
-use sysinfo::System;
+use sysinfo::{ProcessesToUpdate, System};
 use tokio::{spawn, time::sleep};
 use tokio_tungstenite::{
     connect_async,
@@ -154,14 +153,11 @@ async fn main() {
     let cb_id = read_to_string("/var/lb/id").unwrap_or(String::from("ERROR_READING_ID"));
     let cb_id = cb_id.trim();
 
-    let default_url = Url::from_str(DEFAULT_URL).unwrap();
+    let default_url: Url = DEFAULT_URL.parse().unwrap();
 
     // Parse url in /usr/local/lb/cloud_client/server_url if it exists,
     // use DEFAULT_URL if it doesn't or is not a valid URL.
-    let mut url = Url::from_str(
-        &read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or(DEFAULT_URL.to_string()),
-    )
-    .unwrap_or(default_url.clone());
+    let mut url = read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or(DEFAULT_URL.to_string()).parse().unwrap_or(default_url.clone());
 
     // The scheme must be any of these:
     // - http (converted to ws),
@@ -342,13 +338,13 @@ async fn main() {
                                         spawn(async move {
                                             let mut sysinfo = System::new_all();
                                             let pid = (get_pid() as usize).into();
-                                            sysinfo.refresh_cpu();
+                                            sysinfo.refresh_cpu_usage();
                                             sysinfo.refresh_memory();
-                                            sysinfo.refresh_process(pid);
+                                            sysinfo.refresh_processes(ProcessesToUpdate::Some(&[pid]));
 
                                             sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL).await;
 
-                                            sysinfo.refresh_cpu();
+                                            sysinfo.refresh_cpu_usage();
 
                                             let process = sysinfo.process(pid).unwrap();
                                             let cpu = process.cpu_usage();
