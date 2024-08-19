@@ -147,6 +147,10 @@ async fn main() {
     let mac_address = get_mac_address()
         .expect("Failed to get MAC address")
         .expect("Failed to get MAC address");
+
+    // this is like this because the borrow checker gets angry due to a value being dropped 
+    // but a reference to it still exists (calling trim on a String borrows it and
+    // creates a &str with a reference to its data, then immediately drops the String)
     let cb_id = read_to_string("/var/lb/id").unwrap_or(String::from("ERROR_READING_ID"));
     let cb_id = cb_id.trim();
 
