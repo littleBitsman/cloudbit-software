@@ -49,7 +49,7 @@ use tokio_tungstenite::{
     connect_async,
     tungstenite::{
         handshake::client::{generate_key, Request},
-        Error, Message,
+        Error as WebSocketError, Message,
     },
 };
 use url::Url;
@@ -87,7 +87,7 @@ impl TryFrom<String> for LEDCommand {
             "clownbarf" => Ok(Self::Clownbarf),
             "blink" => Ok(Self::Blink),
             "hold" => Ok(Self::Hold),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 
@@ -108,7 +108,7 @@ impl Display for LEDCommand {
             Self::Off => "off",
             Self::Clownbarf => "clownbarf",
             Self::Blink => "blink",
-            Self::Hold => "hold"
+            Self::Hold => "hold",
         });
         f.write_str(&s)
     }
@@ -148,7 +148,7 @@ async fn main() {
         .expect("Failed to get MAC address")
         .expect("Failed to get MAC address");
 
-    // this is like this because the borrow checker gets angry due to a value being dropped 
+    // this is like this because the borrow checker gets angry due to a value being dropped
     // but a reference to it still exists (calling trim on a String borrows it and
     // creates a &str with a reference to its data, then immediately drops the String)
     let cb_id = read_to_string("/var/lb/id").unwrap_or(String::from("ERROR_READING_ID"));
@@ -237,16 +237,25 @@ async fn main() {
     led::set(LEDCommand::Hold);
 
     // Captures: rx, tx
+    // This handles sending messages sent over sender or sender2 to rx
+    // through the WebSocket on tx.
     let send_loop = spawn(async move {
         while let Some(msg) = rx.next().await {
             let result = tx.send(msg).await;
             match result {
-                Err(Error::AlreadyClosed | Error::ConnectionClosed) => panic!("connection closed, rebooting to attempt reconnection"),
-                Err(Error::Io(err)) => {
-                    if err.kind() == IoErrorKind::BrokenPipe {
+                Err(WebSocketError::AlreadyClosed | WebSocketError::ConnectionClosed) => {
+                    panic!("connection closed, rebooting to attempt reconnection")
+                }
+                Err(WebSocketError::Io(err)) => match err.kind() {
+                    IoErrorKind::BrokenPipe | IoErrorKind::ConnectionReset => {
                         panic!("connection closed, rebooting to attempt reconnection")
                     }
-                }
+                    IoErrorKind::OutOfMemory => panic!("!! OUT OF MEMORY !!"),
+                    IoErrorKind::Interrupted => {
+                        panic!("unknown interrupt, rebooting to attempt reconnection")
+                    }
+                    _ => {}
+                },
                 Err(e) => eprintln!("error on WebSocket: {e}"),
                 _ => {}
             }
@@ -254,6 +263,7 @@ async fn main() {
     });
 
     // Captures: receiver, sender
+    // This handles receiving and handling messages on receiver.
     let receive_loop = spawn(async move {
         // Receive loop
         while let Some(Ok(message)) = receiver.next().await {
@@ -268,7 +278,7 @@ async fn main() {
                         Ok(()) => (),
                         Err(e) => {
                             eprintln!("Receive Loop: {e:?}");
-                            return
+                            return;
                         }
                     }
                 }
@@ -362,17 +372,17 @@ async fn main() {
                                                 .unwrap();
                                         });
                                     }
-                                    _ => eprintln!("invalid opcode: {opcode}")
+                                    _ => eprintln!("invalid opcode: {opcode}"),
                                 }
                             }
                         } else {
-                            return eprintln!("bad packet from server")
+                            return eprintln!("bad packet from server");
                         }
                     } else {
                         eprintln!("bad packet from server")
                     }
                 }
-                _ => eprintln!("unknown content")
+                _ => eprintln!("unknown content"),
             }
         }
     });
