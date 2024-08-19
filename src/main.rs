@@ -21,7 +21,8 @@
     clippy::as_underscore,
     clippy::todo,
     clippy::use_self,
-    clippy::semicolon_inside_block
+    clippy::semicolon_inside_block,
+    clippy::uninlined_format_args
 )]
 
 const DEFAULT_URL: &str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
@@ -135,7 +136,7 @@ use hardware::*;
 /// <2 seconds at a time with long-ish breaks should be safe)
 fn set_output(value: u16) -> bool {
     Command::new("/usr/local/lb/DAC/bin/setDAC")
-        .arg(format!("{:04x}", value))
+        .arg(format!("{value:04x}"))
         .execute_check_exit_status_code(0)
         .is_ok()
 }
@@ -242,7 +243,7 @@ async fn main() {
                         panic!("connection closed, rebooting to attempt reconnection")
                     }
                 }
-                Err(e) => eprintln!("error on WebSocket: {}", e),
+                Err(e) => eprintln!("error on WebSocket: {e}"),
                 _ => {}
             }
         }
@@ -262,13 +263,13 @@ async fn main() {
                         // Send a pong in response
                         Ok(()) => (),
                         Err(e) => {
-                            eprintln!("Receive Loop: {:?}", e);
+                            eprintln!("Receive Loop: {e:?}");
                             return
                         }
                     }
                 }
                 Message::Text(data) => {
-                    eprintln!("{}", data);
+                    // eprintln!("{data}");
                     if let Ok(parsed) = from_str::<JsonValue>(&data) {
                         if let JsonValue::Object(ref obj) = parsed {
                             if let Some(opcode) = obj["opcode"].as_u64() {
@@ -357,7 +358,7 @@ async fn main() {
                                                 .unwrap();
                                         });
                                     }
-                                    _ => eprintln!("invalid opcode: {}", opcode)
+                                    _ => eprintln!("invalid opcode: {opcode}")
                                 }
                             }
                         } else {
@@ -373,7 +374,7 @@ async fn main() {
     });
 
     set_panic_hook(Box::new(move |v| {
-        eprintln!("{}", v);
+        eprintln!("{v}");
         send_loop.abort();
         receive_loop.abort();
         // Turns out the memory mapping is removed after the process exits lol
