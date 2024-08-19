@@ -27,9 +27,11 @@
 
 const DEFAULT_URL: &str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
 
+/// The minimum amount that the input ADC value must change
+/// before the value is considered "different" (this is an
+/// attempt to reduce the effects of noise from the ADC).
 const INPUT_DELTA_THRESHOLD: u8 = 2;
 
-use execute::Execute;
 use futures::{channel::mpsc::channel, SinkExt, StreamExt};
 use mac_address::get_mac_address;
 use serde::Serialize;
@@ -136,8 +138,9 @@ use hardware::*;
 fn set_output(value: u16) -> bool {
     Command::new("/usr/local/lb/DAC/bin/setDAC")
         .arg(format!("{value:04x}"))
-        .execute_check_exit_status_code(0)
-        .is_ok()
+        .status()
+        .expect("failed to execute /usr/local/lb/DAC/bin/setDAC")
+        .success()
 }
 
 // MAIN LOOP
@@ -264,20 +267,15 @@ async fn main() {
         // Receive loop
         while let Some(Ok(message)) = receiver.next().await {
             match message {
-                Message::Close(a) => {
-                    // Got a close message, so send a close message and return
-                    let _ = sender.send(Message::Close(a)).await;
-                }
-                Message::Ping(data) => {
-                    match sender.send(Message::Pong(data)).await {
-                        // Send a pong in response
-                        Ok(()) => (),
-                        Err(e) => {
-                            eprintln!("Receive Loop: {e:?}");
-                            return;
-                        }
+                Message::Close(frame_opt) => {
+                    // we have to exit now to attempt reconnection
+                    if let Some(frame) = frame_opt {
+                        panic!("WebSocket closed: {frame}")
+                    } else {
+                        panic!("WebSocket closed, no close frame was available")
                     }
                 }
+                Message::Ping(data) => sender.send(Message::Pong(data)).await.unwrap(),
                 Message::Text(data) => {
                     // eprintln!("{data}");
                     if let Ok(parsed) = from_str::<JsonValue>(&data) {
@@ -295,6 +293,7 @@ async fn main() {
                                             )
                                         }
                                     }
+
                                     // Any numbers that match 0xFX where X is any digit is a developer
                                     // opcode (LED set, button status, etc.)
 
