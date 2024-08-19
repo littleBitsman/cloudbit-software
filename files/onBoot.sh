@@ -4,10 +4,11 @@
 # reads from ROM every time and writes hash and mac to temporary files
 # also decides whether to do testing or enter "normal" mode.
 
-
 # include global variables
 source /etc/lb_scripts.conf
 
+# note from littleBitsman
+# sometimes when copying files the permissions get screwed up so this is a thing!
 sudo chmod 777 /usr/local/lb/cloud_client/bin/cloud_client
 
 printf "Checking cloud identity on ROM... "
