@@ -106,7 +106,7 @@ impl Display for LEDCommand {
             Self::Off => "off",
             Self::Clownbarf => "clownbarf",
             Self::Blink => "blink",
-            Self::Hold => "hold",
+            Self::Hold => "hold"
         });
         f.write_str(&s)
     }
