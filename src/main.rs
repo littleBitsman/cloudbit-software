@@ -19,7 +19,8 @@
     clippy::undocumented_unsafe_blocks,
     clippy::absolute_paths,
     clippy::as_underscore,
-    clippy::todo
+    clippy::todo,
+    clippy::use_self
 )]
 
 const DEFAULT_URL: &str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
@@ -359,7 +360,7 @@ async fn main() {
                                 }
                             }
                         } else {
-                            return eprintln!("bad packet from server");
+                            return eprintln!("bad packet from server")
                         }
                     } else {
                         eprintln!("bad packet from server")
