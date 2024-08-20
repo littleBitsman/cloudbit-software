@@ -160,7 +160,10 @@ async fn main() {
 
     // Parse url in /usr/local/lb/cloud_client/server_url if it exists,
     // use DEFAULT_URL if it doesn't or is not a valid URL.
-    let mut url = read_to_string("/usr/local/lb/cloud_client/server_url").unwrap_or(DEFAULT_URL.to_string()).parse().unwrap_or(default_url.clone());
+    let mut url = read_to_string("/usr/local/lb/cloud_client/server_url")
+        .unwrap_or(DEFAULT_URL.to_string())
+        .parse()
+        .unwrap_or(default_url.clone());
 
     // The scheme must be any of these:
     // - http (converted to ws),
@@ -339,7 +342,8 @@ async fn main() {
                                             let pid = (get_pid() as usize).into();
                                             sysinfo.refresh_cpu_usage();
                                             sysinfo.refresh_memory();
-                                            sysinfo.refresh_processes(ProcessesToUpdate::Some(&[pid]));
+                                            sysinfo
+                                                .refresh_processes(ProcessesToUpdate::Some(&[pid]));
 
                                             sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL).await;
 
