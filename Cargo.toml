@@ -1,8 +1,12 @@
 [package]
 name = "cloudbit_software"
+description = "alternate software for the littleBits cloudBit"
 version = "1.0.0"
 edition = "2021"
 license = "GPL-3.0-or-later"
+readme = true
+
+exclude = ["/.cargo/*", "/.github/*", "/.gitignore", "/files/*", "/testServer/*", "/buildtools/*"]
 
 [dependencies]
 futures = "0.3.30"
