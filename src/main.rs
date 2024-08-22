@@ -74,6 +74,8 @@ enum LEDCommand {
 }
 
 impl TryFrom<String> for LEDCommand {
+    type Error = ();
+
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match value.to_lowercase().as_str() {
             "red" => Ok(Self::Red),
@@ -91,8 +93,6 @@ impl TryFrom<String> for LEDCommand {
             _ => Err(()),
         }
     }
-
-    type Error = ();
 }
 
 impl Display for LEDCommand {
