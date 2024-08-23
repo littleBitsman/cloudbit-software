@@ -205,7 +205,7 @@ async fn main() {
         led::set(LEDCommand::Blink);
         // I wanted to avoid using Clone here but oh well
         if let Ok((client, _)) = connect_async(request.clone()).await {
-            break client;
+            break client
         } else {
             led::set(LEDCommand::Red);
             led::set(LEDCommand::Blink);
@@ -281,101 +281,91 @@ async fn main() {
                 Message::Ping(data) => sender.send(Message::Pong(data)).await.unwrap(),
                 Message::Text(data) => {
                     // eprintln!("{data}");
-                    if let Ok(parsed) = from_str::<JsonValue>(&data) {
-                        if let JsonValue::Object(ref obj) = parsed {
-                            if let Some(opcode) = obj["opcode"].as_u64() {
-                                match opcode {
-                                    0x2 => {
-                                        // OUTPUT
-                                        if let Some(new) = obj["data"]["value"].as_u64() {
-                                            set_output(new as u16);
-                                        } else {
-                                            eprintln!(
-                                                "bad output packet: {}",
-                                                to_string(&obj).unwrap()
-                                            )
-                                        }
+                    if let Ok(JsonValue::Object(obj)) = from_str::<JsonValue>(&data) {
+                        if let Some(opcode) = obj["opcode"].as_u64() {
+                            match opcode {
+                                0x2 => {
+                                    // OUTPUT
+                                    if let Some(new) = obj["data"]["value"].as_u64() {
+                                        set_output(new as u16);
+                                    } else {
+                                        eprintln!("bad output packet: {}", to_string(&obj).unwrap())
                                     }
-
-                                    // Any numbers that match 0xFX where X is any digit is a developer
-                                    // opcode (LED set, button status, etc.)
-
-                                    // Set LED
-                                    0xF0 => {
-                                        if let Some(command) = obj["led_command"].as_str() {
-                                            let command =
-                                                command.replace(", ", " ").replace(",", " ");
-
-                                            let mut chain = Vec::new();
-
-                                            for item in command.split(" ") {
-                                                if let Ok(cmd) =
-                                                    LEDCommand::try_from(item.to_string())
-                                                {
-                                                    chain.push(cmd)
-                                                }
-                                            }
-                                            led::set_many(chain);
-                                        } else {
-                                            eprintln!("bad set LED packet: {}", stringify(parsed))
-                                        }
-                                    }
-
-                                    // Get button (it is never sent normally)
-                                    0xF1 => sender
-                                        .send(Message::Text(stringify(json!({
-                                            "opcode": 0xF2, // 0xF2 is button state (returned from 0xF1)
-                                            "data": {
-                                                "button": button::read()
-                                            }
-                                        }))))
-                                        .await
-                                        .unwrap(),
-
-                                    // Get system stats (e.g., memory usage, CPU usage)
-                                    // Note: you should NOT be polling this
-                                    // More notes can be found in protocol details
-                                    0xF3 => {
-                                        let mut sender = sender.clone();
-                                        spawn(async move {
-                                            let mut sysinfo = System::new_all();
-                                            let pid = (get_pid() as usize).into();
-                                            sysinfo.refresh_cpu_usage();
-                                            sysinfo.refresh_memory();
-                                            sysinfo
-                                                .refresh_processes(ProcessesToUpdate::Some(&[pid]));
-
-                                            sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL).await;
-
-                                            sysinfo.refresh_cpu_usage();
-
-                                            let process = sysinfo.process(pid).unwrap();
-                                            let cpu = process.cpu_usage();
-                                            let mem_bytes = process.memory();
-                                            let total_mem = sysinfo.total_memory();
-                                            let mem_percent =
-                                                ((mem_bytes as f64) / (total_mem as f64)) * 100.0;
-
-                                            // Opcode 0xF4 is system stats (RETURNED from 0xF3)
-                                            sender
-                                                .send(Message::text(stringify(json!({
-                                                    "opcode": 0xF4,
-                                                    "stats": {
-                                                        "cpu_usage": cpu,
-                                                        "memory_usage": mem_bytes,
-                                                        "total_memory": total_mem,
-                                                        "memory_usage_percent": mem_percent
-                                                    }
-                                                }))))
-                                                .await
-                                                .unwrap();
-                                        });
-                                    }
-                                    _ => eprintln!("invalid opcode: {opcode}"),
                                 }
+
+                                // Any numbers that match 0xFX where X is any digit is a developer
+                                // opcode (LED set, button status, etc.)
+
+                                // Set LED
+                                0xF0 => {
+                                    if let Some(command) = obj["led_command"].as_str() {
+                                        let command = command.replace(", ", " ").replace(",", " ");
+
+                                        let mut chain = Vec::new();
+
+                                        for item in command.split(" ") {
+                                            if let Ok(cmd) = LEDCommand::try_from(item.to_string())
+                                            {
+                                                chain.push(cmd)
+                                            }
+                                        }
+                                        led::set_many(chain);
+                                    } else {
+                                        eprintln!("bad set LED packet: {}", stringify(obj))
+                                    }
+                                }
+
+                                // Get button (it is never sent normally)
+                                0xF1 => sender
+                                    .send(Message::Text(stringify(json!({
+                                        "opcode": 0xF2, // 0xF2 is button state (returned from 0xF1)
+                                        "data": {
+                                            "button": button::read()
+                                        }
+                                    }))))
+                                    .await
+                                    .unwrap(),
+
+                                // Get system stats (e.g., memory usage, CPU usage)
+                                // Note: you should NOT be polling this
+                                // More notes can be found in protocol details
+                                0xF3 => {
+                                    let mut sender = sender.clone();
+                                    spawn(async move {
+                                        let mut sysinfo = System::new_all();
+                                        let pid = (get_pid() as usize).into();
+                                        sysinfo.refresh_cpu_usage();
+                                        sysinfo.refresh_memory();
+                                        sysinfo.refresh_processes(ProcessesToUpdate::Some(&[pid]));
+
+                                        sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL).await;
+
+                                        sysinfo.refresh_cpu_usage();
+
+                                        let process = sysinfo.process(pid).unwrap();
+                                        let cpu = process.cpu_usage();
+                                        let mem_bytes = process.memory();
+                                        let total_mem = sysinfo.total_memory();
+                                        let mem_percent =
+                                            ((mem_bytes as f64) / (total_mem as f64)) * 100.0;
+
+                                        // Opcode 0xF4 is system stats (RETURNED from 0xF3)
+                                        sender
+                                            .send(Message::text(stringify(json!({
+                                                "opcode": 0xF4,
+                                                "stats": {
+                                                    "cpu_usage": cpu,
+                                                    "memory_usage": mem_bytes,
+                                                    "total_memory": total_mem,
+                                                    "memory_usage_percent": mem_percent
+                                                }
+                                            }))))
+                                            .await
+                                            .unwrap();
+                                    });
+                                }
+                                _ => eprintln!("invalid opcode: {opcode}"),
                             }
-                        } else {
-                            return eprintln!("bad packet from server");
                         }
                     } else {
                         eprintln!("bad packet from server")
