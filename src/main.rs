@@ -288,7 +288,7 @@ async fn main() {
                                     0x2 => {
                                         // OUTPUT
                                         if let Some(new) = obj["data"]["value"].as_u64() {
-                                            set_output(new.min(u16::MAX as u64) as u16);
+                                            set_output(new as u16);
                                         } else {
                                             eprintln!(
                                                 "bad output packet: {}",
