@@ -2,4 +2,4 @@
 @REM Purpose: Copy binary to drive (mounted on Windows using "Linux File Systems for Windows by Paragon Software")
 @REM THIS SCRIPT IS NOT MEANT TO BE KEPT
 
-copy cloud_client D:\usr\local\lb\cloud_client\bin
+copy cloud_client E:\usr\local\lb\cloud_client\bin
