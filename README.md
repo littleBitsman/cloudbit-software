@@ -110,9 +110,9 @@ These are opcodes that are available for use for any devs wanting to customize t
     - **WARNING: DO NOT POLL SYSTEM STATISTICS**
 
 # versions
-`main` branch - version built every time a file in the src directory is updated - may be unstable
-`udp` branch - version built every time a file in the src directory on the `udp` branch is updated - may be unstable
-releases - versions ready to be used
+- `main` branch - version built every time a file in the src directory is updated - may be unstable
+- `udp` branch - version built every time a file in the src directory on the `udp` branch is updated - may be unstable
+- releases - versions ready to be used
 
 # license
 cloudbit-software - an alternative software for the littleBits cloudBit.
