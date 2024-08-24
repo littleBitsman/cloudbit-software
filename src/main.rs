@@ -26,7 +26,7 @@
 )]
 
 const DEFAULT_URL: &str = "wss://gateway.cloudcontrol.littlebitsman.dev/";
-const LOOP_DELAY_MS: u64 = 25;
+const LOOP_DELAY_MS: u64 = 10;
 
 /// The minimum amount that the input ADC value must change
 /// before the value is considered "different" (this is an
