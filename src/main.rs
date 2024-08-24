@@ -397,7 +397,7 @@ async fn main() {
         if current_input.abs_diff(right_now) > INPUT_DELTA_THRESHOLD {
             current_input = right_now;
             sender2
-                .send(Message::text(stringify(json!({
+                .send(Message::Text(stringify(json!({
                     "opcode": 0x1,
                     "data": {
                         "value": current_input
