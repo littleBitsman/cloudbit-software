@@ -55,9 +55,7 @@ pub fn init(fd: i32) -> IoResult<()> {
 
     let mmaped = map(fd, ADC_PAGE as i64)?;
 
-    unsafe {
-        ADC_POINTER.set(mmaped).unwrap()
-    }
+    unsafe { ADC_POINTER.set(mmaped).unwrap() }
 
     mem_init(mmaped);
 
