@@ -52,36 +52,10 @@ mod mem {
     use libc::{mmap, MAP_FAILED, MAP_SHARED, PROT_READ, PROT_WRITE};
     use std::{
         io::{Error as IoError, Result as IoResult},
-        ptr::null_mut,
-        sync::RwLock,
+        ptr::null_mut
     };
 
     pub const MAP_SIZE: usize = 0x1FFF;
-
-    pub struct StaticPtr<T> {
-        inner: RwLock<Option<*mut T>>,
-    }
-    impl<T> StaticPtr<T> {
-        pub const fn new() -> Self {
-            Self {
-                inner: RwLock::new(None),
-            }
-        }
-
-        pub fn get(&self) -> Option<*mut T> {
-            *self.inner.read().unwrap()
-        }
-
-        pub fn set(&self, new: *mut T) {
-            let mut lock = self.inner.write().unwrap();
-            *lock = Some(new);
-        }
-    }
-
-    // SAFETY: The `StaticPtr<T>` type is implemented as `Sync` because the inner `RwLock<Option<*mut T>>`
-    // ensures that concurrent access to the contained pointer is properly synchronized.
-    // The `RwLock` provides thread-safe read and write access to the `Option<*mut T>`.
-    unsafe impl<T> Sync for StaticPtr<T> {}
 
     /// Reads memory at (page + offset) with [`std::ptr::read_volatile`].
     ///
