@@ -348,6 +348,7 @@ async fn main() {
                                         let total_mem = sysinfo.total_memory();
                                         let mem_percent =
                                             ((mem_bytes as f64) / (total_mem as f64)) * 100.0;
+                                        let cpu_temp_kelvin = adc::read_temp();
 
                                         // Opcode 0xF4 is system stats (RETURNED from 0xF3)
                                         sender
@@ -357,7 +358,8 @@ async fn main() {
                                                     "cpu_usage": cpu,
                                                     "memory_usage": mem_bytes,
                                                     "total_memory": total_mem,
-                                                    "memory_usage_percent": mem_percent
+                                                    "memory_usage_percent": mem_percent,
+                                                    "cpu_temp_kelvin": cpu_temp_kelvin
                                                 }
                                             }))))
                                             .await

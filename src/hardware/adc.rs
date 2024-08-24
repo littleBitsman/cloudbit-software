@@ -91,3 +91,38 @@ pub fn read() -> u8 {
         0
     }
 }
+
+/// Gets the CPU die temperature, in Kelvin.
+pub fn read_temp() -> f32 {
+    if let Some(ptr) = get() {
+        // Channel 1 is converted from channel 8 (PMOS THIN)
+        // Channel 2 is converted from channel 9 (NMOS THIN)
+
+        // Await conversion of channel 1
+        let pmos_thin = {
+            // Schedule conversion
+            poke(ptr, ADC_SCHED_OFFSET, 0x2);
+            let has_high_bit = peek(ptr, 0x0060) >= 0x80000000;
+            while (peek(ptr, 0x0060) >= 0x80000000) == has_high_bit { }
+            peek(ptr, 0x0060) & 0xFFF // mask to the low 12 bits
+        } as f32;
+
+        // Await conversion of channel 2
+        let nmos_thin = {
+            // Schedule conversion
+            poke(ptr, ADC_SCHED_OFFSET, 0x4);
+            let has_high_bit = peek(ptr, 0x0060) >= 0x80000000;
+            while (peek(ptr, 0x0070) >= 0x80000000) == has_high_bit { }
+            peek(ptr, 0x0070) & 0xFFF // mask to the low 12 bits
+        } as f32;
+        // (channel9 - channel8) * 1.012 / 4
+
+        // Clear
+        poke(ptr, ADC_CLEAR_OFFSET, 0x6);
+
+        (nmos_thin - pmos_thin) * 1.012 / 4.0
+    } else {
+        println!("warning: no ADC page pointer found");
+        f32::NAN
+    }
+}
