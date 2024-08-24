@@ -109,6 +109,11 @@ These are opcodes that are available for use for any devs wanting to customize t
     - See the [Rust sysinfo crate](https://crates.io/crates/sysinfo) for more info on how system stats are retrieved
     - **WARNING: DO NOT POLL SYSTEM STATISTICS**
 
+# versions
+`main` branch - version built every time a file in the src directory is updated - may be unstable
+`udp` branch - version built every time a file in the src directory on the `udp` branch is updated - may be unstable
+releases - versions ready to be used
+
 # license
 cloudbit-software - an alternative software for the littleBits cloudBit.
 
