@@ -24,6 +24,9 @@ server.on('connection', (c, r) => {
                 console.log(`IDENTIFY:`)
                 console.log(`- MAC: ${json.mac_address}`)
                 console.log(`- ID: ${json.cb_id}`)
+            } else if (OPCODE == 0xF2) {
+                console.log(`BUTTON ${MAC}`)
+                console.log(`- PRESSED: ${json.data.button}`)
             } else if (OPCODE == 0xF4) {
                 const stats = json.stats
                 console.log(`STAT ${MAC}:`)
@@ -57,7 +60,9 @@ process.stdin.on('data', d => {
             }
         }))
     } else if (opcode == 0xF1) {
-        console.log('not yet...')
+        server.broadcast(JSON.stringify({
+            opcode: 0xF1
+        }))
     } else if (opcode == 0xF3) {
         server.broadcast(JSON.stringify({
             opcode: 0xF3
