@@ -17,22 +17,18 @@
 
 //! ADC wrapper
 
-use crate::hardware::mem::{map, peek, poke};
-use std::{
-    io::Result as IoResult,
-    sync::OnceLock,
-};
+use crate::hardware::mem::{map, peek, poke, StaticPtr};
+use std::io::Result as IoResult;
 
 pub const ADC_PAGE: usize = 0x80050000;
 pub const ADC_SCHED_OFFSET: usize = 0x0004;
 pub const ADC_VALUE_OFFSET: usize = 0x0050;
 pub const ADC_CLEAR_OFFSET: usize = 0x0018;
 
-static mut ADC_POINTER: OnceLock<*mut u32> = OnceLock::new();
+static ADC_POINTER: StaticPtr<u32> = StaticPtr::new();
 
 fn get() -> Option<*mut u32> {
-    // SAFETY: TODO
-    unsafe { ADC_POINTER.get().cloned() }
+    ADC_POINTER.get()
 }
 
 /// Initalizes ADC memory
@@ -59,10 +55,7 @@ pub fn init(fd: i32) -> IoResult<()> {
 
     let mmaped = map(fd, ADC_PAGE as i64)?;
     
-    // SAFETY: TODO
-    unsafe {
-        ADC_POINTER.set(mmaped).unwrap();
-    }
+    ADC_POINTER.set(mmaped);
 
     mem_init(mmaped);
 

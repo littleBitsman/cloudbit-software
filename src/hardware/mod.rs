@@ -47,10 +47,33 @@ pub fn init_all() -> Result<(), (&'static str, IoError)> {
 /// - [`peek`] (read memory at `page` offset by `offset`)
 /// - [`poke`] (write to memory at `page` offset by `offset`, setting it to `value`)
 mod mem {
-    use std::{io::{Error as IoError, Result as IoResult}, ptr::null_mut};
+    use std::{io::{Error as IoError, Result as IoResult}, ptr::null_mut, sync::RwLock};
     use libc::{mmap, MAP_FAILED, MAP_SHARED, PROT_READ, PROT_WRITE};
 
     pub const MAP_SIZE: usize = 0x1FFF;
+
+    pub struct StaticPtr<T> {
+        inner: RwLock<Option<*mut T>>
+    }
+    impl<T> StaticPtr<T> {
+        pub const fn new() -> Self {
+            Self {
+                inner: RwLock::new(None)
+            }
+        }
+
+        pub fn get(&self) -> Option<*mut T> {
+            *self.inner.read().unwrap()
+        }
+
+        pub fn set(&self, new: *mut T) {
+            let mut lock = self.inner.write().unwrap();
+            *lock = Some(new);
+        }
+    }
+
+    // SAFETY: TODO
+    unsafe impl<T> Sync for StaticPtr<T> {}
 
     /// Reads memory at (page + offset) with [`std::ptr::read_volatile`]
     pub fn peek(page: *mut u32, offset: usize) -> u32 {
