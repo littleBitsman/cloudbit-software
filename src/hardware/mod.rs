@@ -46,31 +46,83 @@ pub fn init_all() -> Result<(), (&'static str, IoError)> {
 /// Memory module containing:
 /// - [`peek`] (read memory at `page` offset by `offset`)
 /// - [`poke`] (write to memory at `page` offset by `offset`, setting it to `value`)
+/// - [`map`] (wrapper for [`libc::mmap`])
+/// - [`StaticPtr<T>`] (a [`Sync`] pointer wrapper that is thread-safe)
 mod mem {
-    use std::{io::{Error as IoError, Result as IoResult}, ptr::null_mut};
     use libc::{mmap, MAP_FAILED, MAP_SHARED, PROT_READ, PROT_WRITE};
+    use std::{
+        io::{Error as IoError, Result as IoResult},
+        ptr::null_mut,
+        sync::RwLock,
+    };
 
     pub const MAP_SIZE: usize = 0x1FFF;
 
-    /// Reads memory at (page + offset) with [`std::ptr::read_volatile`]
+    pub struct StaticPtr<T> {
+        inner: RwLock<Option<*mut T>>,
+    }
+    impl<T> StaticPtr<T> {
+        pub const fn new() -> Self {
+            Self {
+                inner: RwLock::new(None),
+            }
+        }
+
+        pub fn get(&self) -> Option<*mut T> {
+            *self.inner.read().unwrap()
+        }
+
+        pub fn set(&self, new: *mut T) {
+            let mut lock = self.inner.write().unwrap();
+            *lock = Some(new);
+        }
+    }
+
+    // SAFETY: The `StaticPtr<T>` type is implemented as `Sync` because the inner `RwLock<Option<*mut T>>`
+    // ensures that concurrent access to the contained pointer is properly synchronized.
+    // The `RwLock` provides thread-safe read and write access to the `Option<*mut T>`.
+    unsafe impl<T> Sync for StaticPtr<T> {}
+
+    /// Reads memory at (page + offset) with [`std::ptr::read_volatile`].
+    ///
+    /// This function is not marked as `unsafe` to avoid requiring `unsafe` blocks
+    /// every time it is used. However, it does involve `unsafe` operations internally.
+    ///
+    /// # Safety
+    /// - The `page` pointer must be non-null, properly aligned, and point to a valid memory-mapped I/O region.
+    /// - The `offset` must be within the bounds of the mapped memory region.
+    /// - The caller must ensure that reading from this memory address does not cause any unintended side effects
+    ///   or undefined behavior, particularly in the context of hardware interaction.
     pub fn peek(page: *mut u32, offset: usize) -> u32 {
-        // TODO: make this safety comment better
-        // SAFETY: it is up to the caller to ensure that the pointer is valid
-        // (see std::ptr::read_volatile)
+        // SAFETY: The caller must guarantee that `page` is a valid, non-null pointer
+        // pointing to a memory region that can be safely read from, and that `offset`
+        // is within the bounds of that memory region. The operation will perform a
+        // volatile read to ensure the read is not optimized away by the compiler.
         unsafe { page.byte_add(offset).read_volatile() }
     }
 
-    /// Sets memory at (page + offset) with [`std::ptr::write_volatile`]
+    /// Sets memory at (page + offset) with [`std::ptr::write_volatile`].
+    ///
+    /// This function is not marked as `unsafe` to avoid requiring `unsafe` blocks
+    /// every time it is used. However, it does involve `unsafe` operations internally.
+    ///
+    /// # Safety
+    /// - The `page` pointer must be non-null, properly aligned, and point to a valid memory-mapped I/O region.
+    /// - The `offset` must be within the bounds of the mapped memory region.
+    /// - The caller must ensure that writing to this memory address does not cause any unintended side effects
+    ///   or undefined behavior, particularly in the context of hardware interaction.
     pub fn poke(page: *mut u32, offset: usize, value: u32) {
-        // TODO: make this safety comment better
-        // SAFETY: it is up to the caller to ensure that the pointer is valid
-        // (see std::ptr::write_volatile)
+        // SAFETY: The caller must guarantee that `page` is a valid, non-null pointer
+        // pointing to a memory region that can be safely written to, and that `offset`
+        // is within the bounds of that memory region. The operation will perform a
+        // volatile write to ensure the write is not optimized away by the compiler.
         unsafe { page.byte_add(offset).write_volatile(value) }
     }
 
     pub fn map<T>(fd: i32, offset: i64) -> IoResult<*mut T> {
         // SAFETY: FFI functions are marked unsafe since the compiler cannot verify
-        // behavior, but mmap is OK (or should be)
+        // behavior, but mmap is OK (or should be).
+        // This function assumes that `offset` is aligned and is valid.
         let ptr = unsafe {
             mmap(
                 null_mut(),
