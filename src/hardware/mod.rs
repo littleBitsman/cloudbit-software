@@ -57,6 +57,11 @@ mod mem {
 
     pub const MAP_SIZE: usize = 0x1FFF;
 
+    #[derive(Debug)]
+    pub(super) struct StaticPtr<T>(pub *mut T);
+    unsafe impl<T> Send for StaticPtr<T> {}
+    unsafe impl<T> Sync for StaticPtr<T> {}
+
     /// Reads memory at (page + offset) with [`std::ptr::read_volatile`].
     ///
     /// This function is not marked as `unsafe` to avoid requiring `unsafe` blocks
