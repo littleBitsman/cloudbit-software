@@ -15,6 +15,7 @@ permissions:
 jobs:
   build-branch:
     runs-on: ubuntu-latest
+    if: ${{ github.ref_type != 'tag' }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -37,6 +38,7 @@ jobs:
 
   build-releases:
     runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
     strategy:
       matrix:
         version: ['main', 'udp']
