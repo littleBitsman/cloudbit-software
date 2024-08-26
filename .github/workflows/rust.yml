@@ -48,7 +48,7 @@ jobs:
         path: ./cloud_client_${{ matrix.version }}
   release:
     runs-on: ubuntu-latest
-    if: ${{ github.ref_name != 'main' && github.ref_name != 'udp' }}
+    if: ${{ github.ref_type != 'branch' }}
     needs: build
     steps: 
       - name: Make artifacts directory
