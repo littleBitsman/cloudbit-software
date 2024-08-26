@@ -13,7 +13,29 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-branch:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Build
+      uses: houseabsolute/actions-rust-cross@v0
+      with:
+        target: armv5te-unknown-linux-musleabi
+        args: --release
+    - name: Move file
+      run: mv ./target/armv5te-unknown-linux-musleabi/release/cloud_client ./cloud_client
+    - name: Push build
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        {
+          git commit -am "build"
+          git push
+        } || echo "nothing changed"
+
+
+  build-releases:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -32,7 +54,7 @@ jobs:
     - name: Move file
       run: mv ./target/armv5te-unknown-linux-musleabi/release/cloud_client ./cloud_client_${{ matrix.version }}
     - name: Push build
-      if: ${{ github.ref_name == 'main' || github.ref_name == 'udp' }}
+      if: ${{ github.ref_type == 'branch' }}
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -49,7 +71,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     if: ${{ github.ref_type != 'branch' }}
-    needs: build
+    needs: 'build-releases'
     steps: 
       - name: Make artifacts directory
         run: mkdir artifacts
