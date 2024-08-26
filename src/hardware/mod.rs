@@ -93,6 +93,12 @@ mod mem {
         unsafe { page.byte_add(offset).write_volatile(value) }
     }
 
+    /// Maps a file (defined by the file descriptor `fd`) into memory,
+    /// at offset `offset`.
+    /// 
+    /// # Safety
+    /// The `offset` must be aligned and within the bounds of the file defined
+    /// by the file descriptor.
     pub fn map<T>(fd: i32, offset: i64) -> IoResult<*mut T> {
         // SAFETY: FFI functions are marked unsafe since the compiler cannot verify
         // behavior, but mmap is OK (or should be).
