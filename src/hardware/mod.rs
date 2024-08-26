@@ -47,7 +47,6 @@ pub fn init_all() -> Result<(), (&'static str, IoError)> {
 /// - [`peek`] (read memory at `page` offset by `offset`)
 /// - [`poke`] (write to memory at `page` offset by `offset`, setting it to `value`)
 /// - [`map`] (wrapper for [`libc::mmap`])
-/// - [`StaticPtr<T>`] (a [`Sync`] pointer wrapper that is thread-safe)
 mod mem {
     use libc::{mmap, MAP_FAILED, MAP_SHARED, PROT_READ, PROT_WRITE};
     use std::{
@@ -56,11 +55,6 @@ mod mem {
     };
 
     pub const MAP_SIZE: usize = 0x1FFF;
-
-    #[derive(Debug)]
-    pub(super) struct StaticPtr<T>(pub *mut T);
-    unsafe impl<T> Send for StaticPtr<T> {}
-    unsafe impl<T> Sync for StaticPtr<T> {}
 
     /// Reads memory at (page + offset) with [`std::ptr::read_volatile`].
     ///

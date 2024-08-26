@@ -17,7 +17,7 @@
 
 //! ADC wrapper
 
-use crate::hardware::mem::{map, peek, poke, StaticPtr};
+use crate::hardware::mem::{map, peek, poke};
 use std::{io::Result as IoResult, sync::OnceLock};
 
 pub const ADC_PAGE: usize = 0x80050000;
@@ -25,10 +25,10 @@ pub const ADC_SCHED_OFFSET: usize = 0x0004;
 pub const ADC_VALUE_OFFSET: usize = 0x0050;
 pub const ADC_CLEAR_OFFSET: usize = 0x0018;
 
-static ADC_POINTER: OnceLock<StaticPtr<u32>> = OnceLock::new();
+static mut ADC_POINTER: OnceLock<*mut u32> = OnceLock::new();
 
 fn get() -> Option<*mut u32> {
-    ADC_POINTER.get().map(|v| v.0)
+    unsafe { ADC_POINTER.get().copied() }
 }
 
 /// Initalizes ADC memory
@@ -55,7 +55,7 @@ pub fn init(fd: i32) -> IoResult<()> {
 
     let mmaped = map(fd, ADC_PAGE as i64)?;
 
-    ADC_POINTER.set(StaticPtr(mmaped)).unwrap();
+    unsafe { ADC_POINTER.set(mmaped).unwrap() }
 
     mem_init(mmaped);
 
@@ -76,7 +76,7 @@ pub fn read() -> u8 {
 
             // wait for the LRADC0_IRQ bit to become 1 (happens after a conversion completes)
             // this might solve issue #7
-            while (peek(pointer, 0x0010) & 0x1) == 0 {} 
+            while (peek(pointer, 0x0010) & 0x1) == 0 {}
         }
 
         let mut value = peek(pointer, ADC_VALUE_OFFSET) & !0x80000000;
