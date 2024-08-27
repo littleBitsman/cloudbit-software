@@ -89,7 +89,7 @@ pub fn read() -> u8 {
 
         // That comment before was a lie
         // the `as` keyword clamps automatically
-        (value / 16) as u8
+        (value / 16).clamp(u8::MIN as u32, u8::MAX as u32) as u8
     } else {
         println!("warning: no ADC page pointer found");
         0
