@@ -68,11 +68,11 @@ pub fn read() -> u8 {
         poke(pointer, ADC_SCHED_OFFSET, 0x1);
 
         {
-            let has_high_bit = peek(pointer, ADC_VALUE_OFFSET) >= 0x80000000;
+            let has_high_bit = (peek(pointer, ADC_VALUE_OFFSET) & 0x80000000) > 0;
             // There isn't a delay here since in C
             // (see https://github.com/Hixie/localbit/blob/master/localbit.c#L346)
             // it works that way so I'll leave it like this in Rust too
-            while (peek(pointer, ADC_VALUE_OFFSET) >= 0x80000000) == has_high_bit {}
+            while ((peek(pointer, ADC_VALUE_OFFSET) & 0x80000000) > 0) == has_high_bit {}
 
             // wait for the LRADC0_IRQ bit to become 1 (happens after a conversion completes)
             // this might solve issue #7
