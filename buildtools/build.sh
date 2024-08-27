@@ -8,3 +8,5 @@ git pull
 # build
 # apparently gnueabi uses local system deps., and musleabi doesn't so I'm using that now :)
 cross build --release --target armv5te-unknown-linux-musleabi
+
+cp ./target/armv5te-unknown-linux-musleabi/release/cloud_client ./
