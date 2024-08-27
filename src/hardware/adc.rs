@@ -87,8 +87,8 @@ pub fn read() -> u8 {
             (31 * value - 0x1838) / 11
         };
 
-        // That comment before was a lie
-        // the `as` keyword clamps automatically
+        // That comment is still a lie
+        // I still have to clamp it lol
         (value / 16).clamp(u8::MIN as u32, u8::MAX as u32) as u8
     } else {
         println!("warning: no ADC page pointer found");
