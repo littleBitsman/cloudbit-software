@@ -47,7 +47,6 @@ pub fn init_all() -> Result<(), (&'static str, IoError)> {
 /// - [`peek`] (read memory at `page` offset by `offset`)
 /// - [`poke`] (write to memory at `page` offset by `offset`, setting it to `value`)
 /// - [`map`] (wrapper for [`libc::mmap`])
-/// - [`StaticPtr<T>`] (a [`Sync`] pointer wrapper that is thread-safe)
 mod mem {
     use libc::{mmap, MAP_FAILED, MAP_SHARED, PROT_READ, PROT_WRITE};
     use std::{
