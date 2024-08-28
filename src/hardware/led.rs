@@ -25,7 +25,6 @@
 //! (also blink would suck to make xd)
 
 use crate::LEDCommand;
-use execute::Execute;
 use std::process::Command;
 
 /// the raw form of `set_led()`, directly passes `str` to `/usr/local/lb/LEDcolor/bin/setColor` and
@@ -33,8 +32,9 @@ use std::process::Command;
 fn set_raw(str: String) -> bool {
     Command::new("/usr/local/lb/LEDcolor/bin/setColor")
         .arg(str)
-        .execute_check_exit_status_code(0)
-        .is_ok()
+        .status()
+        .expect("failed to execute /usr/local/lb/LEDcolor/bin/setColor")
+        .success()
 }
 
 /// set led using [`LEDCommand`]
@@ -42,4 +42,19 @@ fn set_raw(str: String) -> bool {
 /// returns success as a boolean
 pub fn set(arg: LEDCommand) -> bool {
     set_raw(arg.to_string())
+}
+
+/// set led using a [`Vec<LEDCommand>`]
+///
+/// returns success as a boolean
+pub fn set_many(arg: Vec<LEDCommand>) -> bool {
+    if arg.is_empty() {
+        false
+    } else {
+        let mut str = String::new();
+        for item in arg {
+            str.push_str(format!("{item} ").as_str())
+        }
+        set_raw(str)
+    }
 }

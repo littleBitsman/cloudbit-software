@@ -1,30 +1,24 @@
 // This file is part of cloudbit-software.
 //
 // cloudbit-software - an alternative software for the littleBits cloudBit.
-// 
+//
 // Copyright (C) 2024 littleBitsman
-// 
-// cloudbit-software is free software: you can redistribute it and/or modify 
-// it under the terms of the GNU General Public License as published by 
-// the Free Software Foundation, either version 3 of the License, or 
+//
+// cloudbit-software is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// cloudbit-software is distributed in the hope that it will be useful, but 
-// WITHOUT ANY WARRANTY; without even the implied warranty of 
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+// cloudbit-software is distributed in the hope that it will be useful, but
+// WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details.
-// You should have received a copy of the GNU General Public License 
+// You should have received a copy of the GNU General Public License
 // along with this program. If not, see https://www.gnu.org/licenses/.
 
 //! Button wrapper
 
-use crate::hardware::{MAP_SIZE, mem::peek};
-use std::{
-    io::{Error, Result as IoResult},
-    ptr::null_mut, 
-    sync::OnceLock
-};
-
-use libc::{mmap, munmap, MAP_FAILED, MAP_SHARED, PROT_READ, PROT_WRITE};
+use crate::hardware::mem::{map, peek};
+use std::{io::Result as IoResult, sync::OnceLock};
 
 const GPIO_PAGE: usize = 0x80018000;
 const BUTTON_OFFSET: usize = 0x0610;
@@ -32,7 +26,15 @@ const BUTTON_OFFSET: usize = 0x0610;
 static mut GPIO_POINTER: OnceLock<*mut u32> = OnceLock::new();
 
 fn get() -> Option<*mut u32> {
-    unsafe { GPIO_POINTER.get().cloned() }
+    unsafe { GPIO_POINTER.get().copied() }
+}
+
+/// Initalizes button memory
+fn mem_init(page: *mut u32) {
+    // See hardware/adc.rs at line 40 for more info on why this is commented out (FOR NOW.)
+    // poke(page, 0x0124, 0x0000C000);
+    // poke(page, 0x0718, 0x00000080);
+    let _ = page; // this makes page used so it doesn't create build warnings
 }
 
 pub fn init(fd: i32) -> IoResult<()> {
@@ -40,24 +42,11 @@ pub fn init(fd: i32) -> IoResult<()> {
         return Ok(());
     }
 
-    let mmaped = unsafe {
-        mmap(
-            null_mut(),
-            MAP_SIZE,
-            PROT_READ | PROT_WRITE,
-            MAP_SHARED,
-            fd,
-            GPIO_PAGE as _,
-        )
-    };
+    let mmaped = map(fd, GPIO_PAGE as i64)?;
 
-    if mmaped == MAP_FAILED {
-        return Err(Error::last_os_error());
-    }
+    unsafe { GPIO_POINTER.set(mmaped).unwrap() }
 
-    unsafe {
-        GPIO_POINTER.set(mmaped as *mut u32).unwrap();
-    }
+    mem_init(mmaped);
 
     Ok(())
 }
@@ -67,13 +56,7 @@ pub fn read() -> bool {
         println!("warning: no button page pointer found");
     }
     get().is_some_and(|v| {
-        // For some reason this is inverted (1 = off, 0 = on)
+        // For some reason this is inverted
         (peek(v, BUTTON_OFFSET) & 0x80) == 0
     })
-}
-
-pub fn cleanup() {
-    if let Some(pointer) = get() {
-        unsafe { munmap(pointer as *mut _, MAP_SIZE) };
-    }
 }
