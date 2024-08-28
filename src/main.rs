@@ -31,7 +31,7 @@ const LOOP_DELAY_MS: u64 = 10;
 /// The minimum amount that the input ADC value must change
 /// before the value is considered "different" (this is an
 /// attempt to reduce the effects of noise from the ADC).
-const INPUT_DELTA_THRESHOLD: u8 = 2;
+const INPUT_DELTA_THRESHOLD: u16 = 2;
 
 use futures::{channel::mpsc::channel, SinkExt, StreamExt};
 use mac_address::get_mac_address;
@@ -188,7 +188,7 @@ async fn main() {
     );
 
     // initialize variables
-    let mut current_input: u8 = 0; // current input (0 should be the starting value on any server implementations)
+    let mut current_input: u16 = 0; // current input (0 should be the starting value on any server implementations)
     let request = Request::get(url.as_str())
         .header("MAC-Address", mac_address.to_string())
         .header("CB-Id", cb_id)

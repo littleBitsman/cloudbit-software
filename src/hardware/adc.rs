@@ -63,7 +63,7 @@ pub fn init(fd: i32) -> IoResult<()> {
 }
 
 /// Reads the ADC (also known as the *LR*ADC, or ***L***ow-***R***esolution **A**nalog to **D**igital **C**onverter)
-pub fn read() -> u8 {
+pub fn read() -> u16 {
     if let Some(pointer) = get() {
         poke(pointer, ADC_SCHED_OFFSET, 0x1);
 
@@ -81,15 +81,11 @@ pub fn read() -> u8 {
 
         let mut value = peek(pointer, ADC_VALUE_OFFSET) & !0x80000000;
         poke(pointer, ADC_CLEAR_OFFSET, 0x1); // clears the LRADC0_IRQ bit in HW_LRADC_CTRL1
-        value = if value <= 200 {
-            0
-        } else {
-            (31 * value - 0x1838) / 11
-        };
-
+        value = ((value.clamp(200, 1700) - 200) * 0xFFFF) / 1500;
+        
         // That comment is still a lie
         // I still have to clamp it lol
-        (value / 16).clamp(u8::MIN as u32, u8::MAX as u32) as u8
+        value.clamp(u8::MIN as u32, u8::MAX as u32) as u16
     } else {
         println!("warning: no ADC page pointer found");
         0
