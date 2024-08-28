@@ -35,8 +35,7 @@ const INPUT_DELTA_THRESHOLD: u16 = 2;
 
 use futures::{channel::mpsc::channel, SinkExt, StreamExt};
 use mac_address::get_mac_address;
-use serde::Serialize;
-use serde_json::{from_str, json, to_string, Value as JsonValue};
+use serde_json::{from_str, json as serde_json, to_string, Value as JsonValue};
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     fs::read_to_string,
@@ -117,10 +116,11 @@ impl Display for LEDCommand {
 
 // UTILS
 
-/// Quick way to turn a `impl Serialize` into a JSON string.
-#[inline]
-fn stringify(obj: impl Sized + Serialize) -> String {
-    to_string(&obj).unwrap()
+/// Returns a JSON string from a JSON object.
+macro_rules! json_str {
+    ($($json:tt)+) => {
+        to_string(&serde_json!($($json)+)).unwrap()
+    };
 }
 
 // Hardware wrappers
@@ -226,11 +226,11 @@ async fn main() {
 
     eprintln!("Successfully connected");
 
-    tx.send(Message::Text(stringify(json!({
+    tx.send(Message::Text(json_str!({
         "opcode": 0x3,
         "mac_address": mac_address.to_string(),
         "cb_id": cb_id
-    }))))
+    })))
     .await
     .unwrap();
 
@@ -312,18 +312,18 @@ async fn main() {
                                         }
                                         led::set_many(chain);
                                     } else {
-                                        eprintln!("bad set LED packet: {}", stringify(obj))
+                                        eprintln!("bad set LED packet: {}", json_str!(obj))
                                     }
                                 }
 
                                 // Get button (it is never sent normally)
                                 Some(0xF1) => sender
-                                    .send(Message::Text(stringify(json!({
+                                    .send(Message::Text(json_str!({
                                         "opcode": 0xF2, // 0xF2 is button state (returned from 0xF1)
                                         "data": {
                                             "button": button::read()
                                         }
-                                    }))))
+                                    })))
                                     .await
                                     .unwrap(),
 
@@ -353,7 +353,7 @@ async fn main() {
 
                                         // Opcode 0xF4 is system stats (RETURNED from 0xF3)
                                         sender
-                                            .send(Message::Text(stringify(json!({
+                                            .send(Message::Text(json_str!({
                                                 "opcode": 0xF4,
                                                 "stats": {
                                                     "cpu_usage": cpu,
@@ -362,7 +362,7 @@ async fn main() {
                                                     "memory_usage_percent": mem_percent,
                                                     "cpu_temp_kelvin": cpu_temp_kelvin
                                                 }
-                                            }))))
+                                            })))
                                             .await
                                             .unwrap();
                                     });
@@ -411,12 +411,12 @@ async fn main() {
         if current_input.abs_diff(right_now) > INPUT_DELTA_THRESHOLD {
             current_input = right_now;
             sender2
-                .send(Message::Text(stringify(json!({
+                .send(Message::Text(json_str!({
                     "opcode": 0x1,
                     "data": {
                         "value": current_input
                     }
-                }))))
+                })))
                 .await
                 .unwrap();
         }
