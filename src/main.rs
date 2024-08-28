@@ -15,7 +15,6 @@
 // You should have received a copy of the GNU General Public License 
 // along with this program. If not, see https://www.gnu.org/licenses/.
 
-use execute::Execute;
 use mac_address::get_mac_address;
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
@@ -25,11 +24,10 @@ use std::{
     process::Command,
     sync::Arc,
     thread::{sleep, spawn},
-    time,
+    time::Duration
 };
 
-const LOCAL_PORT: &'static u16 = &3000;
-// const REMOTE_ADDR: &'static str = "192.168.1.155:3000";
+const LOCAL_PORT: u16 = 3000;
 
 #[allow(dead_code)]
 enum LEDCommand {
@@ -49,24 +47,20 @@ enum LEDCommand {
 
 impl Display for LEDCommand {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(
-            f,
-            "{}",
-            match self {
-                LEDCommand::Red => "red",
-                LEDCommand::Green => "green",
-                LEDCommand::Blue => "blue",
-                LEDCommand::Purple => "purple",
-                LEDCommand::Violet => "purple",
-                LEDCommand::Teal => "teal",
-                LEDCommand::Yellow => "yellow",
-                LEDCommand::White => "white",
-                LEDCommand::Off => "off",
-                LEDCommand::Clownbarf => "clownbarf",
-                LEDCommand::Blink => "blink",
-                LEDCommand::Hold => "hold",
-            }
-        )
+        f.write_str(match self {
+            LEDCommand::Red => "red",
+            LEDCommand::Green => "green",
+            LEDCommand::Blue => "blue",
+            LEDCommand::Purple => "purple",
+            LEDCommand::Violet => "violet",
+            LEDCommand::Teal => "teal",
+            LEDCommand::Yellow => "yellow",
+            LEDCommand::White => "white",
+            LEDCommand::Off => "off",
+            LEDCommand::Clownbarf => "clownbarf",
+            LEDCommand::Blink => "blink",
+            LEDCommand::Hold => "hold",
+        })
     }
 }
 
@@ -75,9 +69,11 @@ mod hardware;
 use hardware::*;
 
 fn set_output(value: u16) -> bool {
-    let mut cmd = Command::new("/usr/local/lb/DAC/bin/setDAC");
-    cmd.arg(format!("{:04x}", value));
-    cmd.execute_check_exit_status_code(0).is_ok()
+    Command::new("/usr/local/lb/DAC/bin/setDAC")
+        .arg(format!("{value:04x}"))
+        .status()
+        .expect("failed to execute /usr/local/lb/DAC/bin/setDAC")
+        .success()
 }
 
 fn start(url: &str) {
@@ -89,7 +85,7 @@ fn start(url: &str) {
     let mac_bytes_2 = mac_bytes.clone();
 
     let socket = Arc::new(
-        UdpSocket::bind(format!("127.0.0.1:{}", LOCAL_PORT)).expect("[socket] failed to bind"),
+        UdpSocket::bind(format!("127.0.0.1:{LOCAL_PORT}")).expect("[socket] failed to bind"),
     );
     println!("bound to UDP port");
     socket
@@ -114,21 +110,20 @@ fn start(url: &str) {
                 .all(|(i, v)| Some(v) == mac_buf.get(i))
             {
                 return println!(
-                    "[socket] received msg intended for another cloudbit. expected: {:?}, got: {:?}",
-                    mac_bytes_2, mac_buf
-                );
+                    "[socket] received msg intended for another cloudbit. expected: {mac_bytes_2:?}, got: {mac_buf:?}",
+                )
             }
 
             let (cmd, buf) = (main_buf[0], main_buf.split_at(1).1);
 
             match cmd {
-                79 => {
+                b'O' => {
                     // 79 = "O"
                     let num = u16::from_le_bytes([buf[0], buf[1]]);
                     set_output(num);
-                    println!("[output] received packet: {}", num);
+                    println!("[output] received packet: {num}");
                 }
-                66 => {
+                b'B' => {
                     // 66 = "B"
                     let mut msg = mac_bytes_2.clone();
                     msg.push(66);
@@ -136,7 +131,7 @@ fn start(url: &str) {
 
                     clone.send(&msg).expect("[button] failed to send button state packet");
                 }
-                _ => println!("{:?}", buf),
+                _ => println!("{buf:?}"),
             }
         })
         .ok();
@@ -144,14 +139,20 @@ fn start(url: &str) {
 
     let mut current = 0;
     let mut msg = mac_bytes.clone();
-    msg.push(73); // "I" = 73
+    msg.push(b'I'); // "I" = 73
+    msg.push(0);
     msg.push(0);
 
     loop {
         let now = adc::read();
         if now != current {
+            let mut msg = msg.clone();
             current = now;
-            msg[13] = current;
+            {
+                let bytes = current.to_le_bytes();
+                msg[13] = bytes[0];
+                msg[14] = bytes[1];
+            }
             socket
                 .send(&msg)
                 .expect("[input] failed to send updated input");
@@ -175,7 +176,7 @@ fn main() {
                 eprintln!("error occured; attempting to restart");
                 led::set(LEDCommand::Red);
                 led::set(LEDCommand::Blink);
-                sleep(time::Duration::from_secs(2));
+                sleep(Duration::from_secs(2));
             }
         }
     }

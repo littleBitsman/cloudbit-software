@@ -92,7 +92,9 @@ pub fn read() -> u16 {
     }
 }
 
-/// Gets the CPU die temperature, in Kelvin.
+// Gets the CPU die temperature, in Kelvin.
+// NOTE: in this version this is unused
+/*
 pub fn read_temp() -> f32 {
     if let Some(ptr) = get() {
         // Channel 1 is converted from channel 8 (PMOS THIN)
@@ -126,3 +128,4 @@ pub fn read_temp() -> f32 {
         f32::NAN
     }
 }
+*/

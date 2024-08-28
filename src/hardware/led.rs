@@ -43,18 +43,3 @@ fn set_raw(str: String) -> bool {
 pub fn set(arg: LEDCommand) -> bool {
     set_raw(arg.to_string())
 }
-
-/// set led using a [`Vec<LEDCommand>`]
-///
-/// returns success as a boolean
-pub fn set_many(arg: Vec<LEDCommand>) -> bool {
-    if arg.is_empty() {
-        false
-    } else {
-        let mut str = String::new();
-        for item in arg {
-            str.push_str(format!("{item} ").as_str())
-        }
-        set_raw(str)
-    }
-}
