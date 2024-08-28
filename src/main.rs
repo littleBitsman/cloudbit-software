@@ -300,12 +300,12 @@ async fn main() {
                                 // Set LED
                                 Some(0xF0) => {
                                     if let Some(command) = obj["led_command"].as_str() {
-                                        let command = command.replace(", ", " ").replace(",", " ");
+                                        let command = command.replace(",", " ");
 
                                         let mut chain = Vec::new();
 
                                         for item in command.split(" ") {
-                                            if let Ok(cmd) = LEDCommand::try_from(item.to_string())
+                                            if let Ok(cmd) = LEDCommand::try_from(item.trim().to_string())
                                             {
                                                 chain.push(cmd)
                                             }
