@@ -226,14 +226,11 @@ async fn main() {
 
     eprintln!("Successfully connected");
 
-    tx.send(Message::text(
-        json!({
-            "opcode": 0x3,
-            "mac_address": mac_address.to_string(),
-            "cb_id": cb_id
-        })
-        .to_string(),
-    ))
+    tx.send(Message::Text(stringify(json!({
+        "opcode": 0x3,
+        "mac_address": mac_address.to_string(),
+        "cb_id": cb_id
+    }))))
     .await
     .unwrap();
 
@@ -354,7 +351,7 @@ async fn main() {
 
                                         // Opcode 0xF4 is system stats (RETURNED from 0xF3)
                                         sender
-                                            .send(Message::text(stringify(json!({
+                                            .send(Message::Text(stringify(json!({
                                                 "opcode": 0xF4,
                                                 "stats": {
                                                     "cpu_usage": cpu,
