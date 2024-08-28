@@ -98,7 +98,7 @@ impl TryFrom<String> for LEDCommand {
 
 impl Display for LEDCommand {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        let s = String::from(match self {
+        f.write_str(match self {
             Self::Red => "red",
             Self::Green => "green",
             Self::Blue => "blue",
@@ -111,8 +111,7 @@ impl Display for LEDCommand {
             Self::Clownbarf => "clownbarf",
             Self::Blink => "blink",
             Self::Hold => "hold",
-        });
-        f.write_str(&s)
+        })
     }
 }
 
