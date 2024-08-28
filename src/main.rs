@@ -211,7 +211,7 @@ async fn main() {
         } else {
             led::set(LEDCommand::Red);
             led::set(LEDCommand::Blink);
-            sleep(Duration::from_secs(2)).await;
+            sleep(Duration::from_secs(2)).await
         }
     };
 
@@ -259,8 +259,8 @@ async fn main() {
                         }
                         _ => {}
                     },
-                    e => eprintln!("error on WebSocket: {e}"),
-                },
+                    e => eprintln!("error on WebSocket: {e}")
+                }
             }
         }
     });
@@ -387,8 +387,8 @@ async fn main() {
                         }
                         _ => {}
                     },
-                    e => eprintln!("error on WebSocket: {e}"),
-                },
+                    e => eprintln!("error on WebSocket: {e}")
+                }
             }
         }
     });
@@ -420,6 +420,6 @@ async fn main() {
                 .await
                 .unwrap();
         }
-        sleep(Duration::from_millis(LOOP_DELAY_MS)).await;
+        sleep(Duration::from_millis(LOOP_DELAY_MS)).await
     }
 }
