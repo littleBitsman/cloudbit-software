@@ -71,7 +71,7 @@ enum LEDCommand {
     Off,
     Clownbarf,
     Blink,
-    Hold,
+    Hold
 }
 
 impl TryFrom<String> for LEDCommand {
@@ -91,7 +91,7 @@ impl TryFrom<String> for LEDCommand {
             "clownbarf" => Ok(Self::Clownbarf),
             "blink" => Ok(Self::Blink),
             "hold" => Ok(Self::Hold),
-            _ => Err(()),
+            _ => Err(())
         }
     }
 }
@@ -110,7 +110,7 @@ impl Display for LEDCommand {
             Self::Off => "off",
             Self::Clownbarf => "clownbarf",
             Self::Blink => "blink",
-            Self::Hold => "hold",
+            Self::Hold => "hold"
         })
     }
 }
@@ -170,6 +170,8 @@ async fn main() {
     // - https (converted to wss),
     // - ws or wss
     // If it is not any of those, the error is logged and the DEFAULT_URL is used.
+    // (The Url implementation returns an error if the URL is  cannot-be-a-base 
+    //  OR its scheme is not http, https, ws, or wss)
     match url.scheme() {
         "http" => url.set_scheme("ws").unwrap(),
         "https" => url.set_scheme("wss").unwrap(),
