@@ -41,8 +41,8 @@ use std::{
     fs::read_to_string,
     io::ErrorKind as IoErrorKind,
     panic::set_hook as set_panic_hook,
-    process::{id as get_pid, Command},
-    time::Duration,
+    process::{Command, id as get_pid},
+    time::Duration
 };
 use sysinfo::{ProcessesToUpdate, System};
 use tokio::{spawn, time::sleep};
@@ -50,8 +50,8 @@ use tokio_tungstenite::{
     connect_async,
     tungstenite::{
         handshake::client::{generate_key, Request},
-        Error as WebSocketError, Message,
-    },
+        Error as WebSocketError, Message
+    }
 };
 use url::Url;
 
