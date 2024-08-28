@@ -71,7 +71,7 @@ enum LEDCommand {
     Off,
     Clownbarf,
     Blink,
-    Hold
+    Hold,
 }
 
 impl TryFrom<String> for LEDCommand {
@@ -91,7 +91,7 @@ impl TryFrom<String> for LEDCommand {
             "clownbarf" => Ok(Self::Clownbarf),
             "blink" => Ok(Self::Blink),
             "hold" => Ok(Self::Hold),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -110,7 +110,7 @@ impl Display for LEDCommand {
             Self::Off => "off",
             Self::Clownbarf => "clownbarf",
             Self::Blink => "blink",
-            Self::Hold => "hold"
+            Self::Hold => "hold",
         })
     }
 }
@@ -170,7 +170,7 @@ async fn main() {
     // - https (converted to wss),
     // - ws or wss
     // If it is not any of those, the error is logged and the DEFAULT_URL is used.
-    // (The Url implementation returns an error if the URL is  cannot-be-a-base 
+    // (The Url implementation returns an error if the URL is  cannot-be-a-base
     //  OR its scheme is not http, https, ws, or wss)
     match url.scheme() {
         "http" => url.set_scheme("ws").unwrap(),
@@ -244,21 +244,23 @@ async fn main() {
         while let Some(msg) = rx.next().await {
             let result = tx.send(msg).await;
             match result {
-                Err(WebSocketError::AlreadyClosed | WebSocketError::ConnectionClosed) => {
-                    panic!("connection closed, rebooting to attempt reconnection")
-                }
-                Err(WebSocketError::Io(err)) => match err.kind() {
-                    IoErrorKind::BrokenPipe | IoErrorKind::ConnectionReset => {
+                Ok(()) => {}
+                Err(err) => match err {
+                    WebSocketError::AlreadyClosed | WebSocketError::ConnectionClosed => {
                         panic!("connection closed, rebooting to attempt reconnection")
                     }
-                    IoErrorKind::OutOfMemory => panic!("!! OUT OF MEMORY !!"),
-                    IoErrorKind::Interrupted => {
-                        panic!("unknown interrupt, rebooting to attempt reconnection")
-                    }
-                    _ => {}
+                    WebSocketError::Io(err) => match err.kind() {
+                        IoErrorKind::BrokenPipe | IoErrorKind::ConnectionReset => {
+                            panic!("connection closed, rebooting to attempt reconnection")
+                        }
+                        IoErrorKind::OutOfMemory => panic!("!! OUT OF MEMORY !!"),
+                        IoErrorKind::Interrupted => {
+                            panic!("unknown interrupt, rebooting to attempt reconnection")
+                        }
+                        _ => {}
+                    },
+                    e => eprintln!("error on WebSocket: {e}"),
                 },
-                Err(e) => eprintln!("error on WebSocket: {e}"),
-                _ => {}
             }
         }
     });
@@ -267,23 +269,23 @@ async fn main() {
     // This handles receiving and handling messages on receiver.
     let receive_loop = spawn(async move {
         // Receive loop
-        while let Some(Ok(message)) = receiver.next().await {
-            match message {
-                Message::Close(frame_opt) => {
-                    // we have to exit now to attempt reconnection
-                    if let Some(frame) = frame_opt {
-                        panic!("WebSocket closed: {frame}")
-                    } else {
-                        panic!("WebSocket closed, no close frame was available")
+        while let Some(msg) = receiver.next().await {
+            match msg {
+                Ok(message) => match message {
+                    Message::Close(frame_opt) => {
+                        // we have to exit now to attempt reconnection
+                        if let Some(frame) = frame_opt {
+                            panic!("WebSocket closed: {frame}")
+                        } else {
+                            panic!("WebSocket closed, no close frame was available")
+                        }
                     }
-                }
-                Message::Ping(data) => sender.send(Message::Pong(data)).await.unwrap(),
-                Message::Text(data) => {
-                    // eprintln!("{data}");
-                    if let Ok(JsonValue::Object(obj)) = from_str::<JsonValue>(&data) {
-                        if let Some(opcode) = obj["opcode"].as_u64() {
-                            match opcode {
-                                0x2 => {
+                    Message::Ping(data) => sender.send(Message::Pong(data)).await.unwrap(),
+                    Message::Text(data) => {
+                        // eprintln!("{data}");
+                        if let Ok(JsonValue::Object(obj)) = from_str::<JsonValue>(&data) {
+                            match obj["opcode"].as_u64() {
+                                Some(0x2) => {
                                     // OUTPUT
                                     if let Some(new) = obj["data"]["value"].as_u64() {
                                         set_output(new as u16);
@@ -296,7 +298,7 @@ async fn main() {
                                 // opcode (LED set, button status, etc.)
 
                                 // Set LED
-                                0xF0 => {
+                                Some(0xF0) => {
                                     if let Some(command) = obj["led_command"].as_str() {
                                         let command = command.replace(", ", " ").replace(",", " ");
 
@@ -315,7 +317,7 @@ async fn main() {
                                 }
 
                                 // Get button (it is never sent normally)
-                                0xF1 => sender
+                                Some(0xF1) => sender
                                     .send(Message::Text(stringify(json!({
                                         "opcode": 0xF2, // 0xF2 is button state (returned from 0xF1)
                                         "data": {
@@ -328,7 +330,7 @@ async fn main() {
                                 // Get system stats (e.g., memory usage, CPU usage)
                                 // Note: you should NOT be polling this
                                 // More notes can be found in protocol details
-                                0xF3 => {
+                                Some(0xF3) => {
                                     let mut sender = sender.clone();
                                     spawn(async move {
                                         let mut sysinfo = System::new_all();
@@ -365,14 +367,28 @@ async fn main() {
                                             .unwrap();
                                     });
                                 }
-                                _ => eprintln!("invalid opcode: {opcode}"),
+                                Some(opcode) => eprintln!("invalid opcode: {opcode}"),
+                                None => {}
                             }
+                        } else {
+                            eprintln!("bad packet from server: {data}")
                         }
-                    } else {
-                        eprintln!("bad packet from server")
                     }
-                }
-                _ => eprintln!("unknown content"),
+                    _ => eprintln!("unknown content"),
+                },
+                Err(err) => match err {
+                    WebSocketError::Io(err) => match err.kind() {
+                        IoErrorKind::BrokenPipe | IoErrorKind::ConnectionReset => {
+                            panic!("connection closed, rebooting to attempt reconnection")
+                        }
+                        IoErrorKind::OutOfMemory => panic!("!! OUT OF MEMORY !!"),
+                        IoErrorKind::Interrupted => {
+                            panic!("unknown interrupt, rebooting to attempt reconnection")
+                        }
+                        _ => {}
+                    },
+                    e => eprintln!("error on WebSocket: {e}"),
+                },
             }
         }
     });
