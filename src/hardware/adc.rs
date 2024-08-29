@@ -78,7 +78,7 @@ pub fn read() -> u16 {
             while (peek(pointer, 0x0010) & 0x1) == 0 {}
         }
 
-        let mut value = peek(pointer, ADC_VALUE_OFFSET) & !0x80000000;
+        let mut value = peek(pointer, ADC_VALUE_OFFSET) & 0xFFF;
         poke(pointer, ADC_CLEAR_OFFSET, 0x1); // clears the LRADC0_IRQ bit in HW_LRADC_CTRL1
         value = ((value.clamp(200, 1700) - 200) * 0xFFFF) / 1500;
         
