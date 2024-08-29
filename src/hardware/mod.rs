@@ -94,7 +94,10 @@ mod mem {
 
     /// Maps a file (defined by the file descriptor `fd`) into memory,
     /// at offset `offset`.
-    /// 
+    ///
+    /// This function is not marked as `unsafe` to avoid requiring `unsafe` blocks
+    /// every time it is used. However, it does involve `unsafe` operations internally.
+    ///
     /// # Safety
     /// The `offset` must be aligned and within the bounds of the file defined
     /// by the file descriptor.
