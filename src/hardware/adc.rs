@@ -33,18 +33,17 @@ fn get() -> Option<*mut u32> {
 
 /// Initalizes ADC memory
 fn mem_init(page: *mut u32) {
-    // I've left this commented out since ADC.d already does this for me.
-    // In the future this will be executed and the pre-existing software
-    // for the ADC will be disabled (same with the button and possibly LED).
-    // The DAC is more complex, so that's a problem for later.
-    /*
-    poke(page, 0x0008, 0x40000000);
-    poke(page, 0x0004, 0x00000001);
-    poke(page, 0x0028, 0x01000000);
-    poke(page, 0x0014, 0x00010000);
-    poke(page, 0x0034, 0x00000001);
-    poke(page, 0x0024, 0x01000000);
-    */
+    poke(page, 0x0008, 0x40000000); // clear CLKGATE 
+    poke(page, 0x0004, 0x00000001); // schedule channel 0 for conversion
+    poke(page, 0x0028, 0x07008000); // clear DIVIDE_BY_TWO for channels 0-2 and TEMPSENSE_PWD
+    poke(page, 0x0014, 0x00070000); // enable interrupts for conversions on channels 0-2
+    poke(page, 0x0034, 0x00000001); // set INVERT_CLOCK to 1
+    poke(page, 0x0024, 0x07000000); // enable DIVIDE_BY_TWO for channels 0-2
+
+    // Map channels -> physical channels:
+    // 0 -> 0
+    // 1 -> PMOS_THIN (8)
+    // 2 -> NMOS_THIN (9)
     poke(page, 0x0144, 0x00000980); // Sets the last 12 bits like this: 0b1001_1000_0000
 }
 
