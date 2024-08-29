@@ -67,14 +67,15 @@ pub fn read() -> u16 {
         poke(pointer, ADC_SCHED_OFFSET, 0x1);
 
         {
+            // It's easier to wait for the interrupt request bit
+            /*
             let has_high_bit = (peek(pointer, ADC_VALUE_OFFSET) & 0x80000000) > 0;
             // There isn't a delay here since in C
             // (see https://github.com/Hixie/localbit/blob/master/localbit.c#L346)
             // it works that way so I'll leave it like this in Rust too
             while ((peek(pointer, ADC_VALUE_OFFSET) & 0x80000000) > 0) == has_high_bit {}
-
+            */
             // wait for the LRADC0_IRQ bit to become 1 (happens after a conversion completes)
-            // this might solve issue #7
             while (peek(pointer, 0x0010) & 0x1) == 0 {}
         }
 
@@ -97,29 +98,38 @@ pub fn read_temp() -> f32 {
         // Channel 1 is converted from channel 8 (PMOS THIN)
         // Channel 2 is converted from channel 9 (NMOS THIN)
 
+        // Schedule conversion
+        poke(ptr, ADC_SCHED_OFFSET, 0x6);
+
         // Await conversion of channel 1
         let pmos_thin = {
-            // Schedule conversion
-            poke(ptr, ADC_SCHED_OFFSET, 0x2);
+            // It's easier to wait for the interrupt request bit
+            /*
             let has_high_bit = peek(ptr, 0x0060) >= 0x80000000;
             while (peek(ptr, 0x0060) >= 0x80000000) == has_high_bit {}
+            */
+            // wait for the LRADC1_IRQ bit to become 1 (happens after a conversion completes)
+            while (peek(ptr, 0x0010) & 0x2) == 0 {}
             peek(ptr, 0x0060) & 0xFFF // mask to the low 12 bits
-        } as f32;
+        } as u16;
 
         // Await conversion of channel 2
         let nmos_thin = {
-            // Schedule conversion
-            poke(ptr, ADC_SCHED_OFFSET, 0x4);
+            // It's easier to wait for the interrupt request bit
+            /*
             let has_high_bit = peek(ptr, 0x0060) >= 0x80000000;
             while (peek(ptr, 0x0070) >= 0x80000000) == has_high_bit {}
+            */
+            // wait for the LRADC2_IRQ bit to become 1 (happens after a conversion completes)
+            while (peek(ptr, 0x0010) & 0x4) == 0 {}
             peek(ptr, 0x0070) & 0xFFF // mask to the low 12 bits
-        } as f32;
+        } as u16;
         // (channel9 - channel8) * 1.012 / 4
 
         // Clear
         poke(ptr, ADC_CLEAR_OFFSET, 0x6);
 
-        (nmos_thin - pmos_thin) * 1.012 / 4.0
+        ((nmos_thin - pmos_thin) as f32) * 1.012 / 4.0
     } else {
         println!("warning: no ADC page pointer found");
         f32::NAN
