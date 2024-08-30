@@ -41,7 +41,7 @@ use std::{
     fs::read_to_string,
     io::ErrorKind as IoErrorKind,
     panic::set_hook as set_panic_hook,
-    process::{Command, id as get_pid},
+    process::id as get_pid,
     time::Duration
 };
 use sysinfo::{ProcessesToUpdate, System};
@@ -127,21 +127,6 @@ macro_rules! json_str {
 mod hardware;
 
 use hardware::*;
-
-/// set output (as 0x0000 - 0xFFFF)
-/// returns success as a boolean
-///
-/// This does NOT have a memory-based wrapper due to the complexity of the DAC.
-/// You should NEVER be calling this in very rapid succession (meaning,
-/// many, many times per second for long periods of time, doing this for
-/// <2 seconds at a time with long-ish breaks should be safe)
-fn set_output(value: u16) -> bool {
-    Command::new("/usr/local/lb/DAC/bin/setDAC")
-        .arg(format!("{value:04x}"))
-        .status()
-        .expect("failed to execute /usr/local/lb/DAC/bin/setDAC")
-        .success()
-}
 
 // MAIN LOOP
 #[tokio::main]
@@ -288,7 +273,7 @@ async fn main() {
                                 Some(0x2) => {
                                     // OUTPUT
                                     if let Some(new) = obj["data"]["value"].as_u64() {
-                                        set_output(new as u16);
+                                        dac::set(new as u16);
                                     } else {
                                         eprintln!("bad output packet: {}", to_string(&obj).unwrap())
                                     }
