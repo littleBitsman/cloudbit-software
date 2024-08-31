@@ -88,6 +88,7 @@ pub fn init(fd: i32) -> IoResult<()> {
                     }
                 }
             }
+            let prev_on = is_on;
             is_on = match state {
                 LEDCommand::Off => false,
                 LEDCommand::Hold => true,
@@ -96,9 +97,9 @@ pub fn init(fd: i32) -> IoResult<()> {
             };
 
             if is_on {
-                // Handle the current color
-                if color_changed {
-                    // ONLY if the color changed, write to memory again
+                // ONLY if the color changed OR the blink state is on
+                // do we write to memory again
+                if color_changed || !prev_on {
                     let bitmask: u8 = match color {
                         LEDCommand::Red => 0b100,
                         LEDCommand::Green => 0b010,
@@ -139,6 +140,11 @@ pub fn init(fd: i32) -> IoResult<()> {
                         0x10000000,
                     );
                 }
+            } else {
+                // Always set them to be off in this
+                poke(ptr, 0x0504, 0x80000000);
+                poke(ptr, 0x0504, 0x40000000);
+                poke(ptr, 0x0514, 0x10000000);
             }
 
             sleep(SLEEP_DUR)
