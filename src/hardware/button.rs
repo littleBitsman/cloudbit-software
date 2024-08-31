@@ -43,10 +43,8 @@ pub fn init(fd: i32) -> IoResult<()> {
     }
 
     let mmaped = map(fd, GPIO_PAGE as i64)?;
-
-    unsafe { GPIO_POINTER.set(mmaped).unwrap() }
-
     mem_init(mmaped);
+    unsafe { GPIO_POINTER.set(mmaped).unwrap() }
 
     Ok(())
 }

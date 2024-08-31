@@ -63,12 +63,11 @@ pub fn init(fd: i32) -> IoResult<()> {
     }
 
     let mmaped = map(fd, DAC_PAGE as i64)?;
-
+    mem_init(mmaped);
     unsafe { DAC_POINTER.set(mmaped).unwrap() }
 
     set_ready_flag(peek(mmaped, DAC_STATE_OFFSET) ^ 2);
 
-    mem_init(mmaped);
 
     Ok(())
 }
