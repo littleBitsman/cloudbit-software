@@ -41,6 +41,7 @@ pub fn init_all() -> Result<(), (&'static str, IoError)> {
     adc::init(fd).map_err(|v| ("ADC", v))?;
     button::init(fd).map_err(|v| ("Button", v))?;
     dac::init(fd).map_err(|v| ("DAC", v))?;
+    led::init(fd).map_err(|v| ("DAC", v))?;
 
     Ok(())
 }
