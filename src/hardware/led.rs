@@ -29,10 +29,14 @@ use crate::{
     LEDCommand,
 };
 use std::{
-    io::Result as IoResult, process::Command, sync::{
+    io::Result as IoResult,
+    process::Command,
+    sync::{
         mpsc::{channel, Sender, TryRecvError},
         OnceLock,
-    }, thread::{sleep, spawn}, time::Duration
+    },
+    thread::{sleep, spawn},
+    time::Duration,
 };
 
 const GPIO_PAGE: usize = 0x80018000;
@@ -57,6 +61,8 @@ pub fn init(fd: i32) -> IoResult<()> {
         return Ok(());
     }
 
+    // Telling LEDcolor.d that the LED should be "off" turns off the blink clock,
+    // if any was active.
     Command::new("/usr/local/lb/LEDcolor/bin/setColor")
         .arg("off")
         .status()

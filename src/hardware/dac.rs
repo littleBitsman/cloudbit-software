@@ -47,7 +47,7 @@ fn mem_init(page: *mut u32) {
     poke(page, 0x78, 0x1001); // HW_AUDIOOUT_PWRDN HEADPHONE and DAC = 0
     poke(page, 0x28, 0x7000000); // HW_AUDIOOUT_DACSRR SRC_HOLD = 0
     poke(page, 0x24, 0x13FF); // HW_AUDIOOUT_DACSRR SRC_FRAC = 0x13FF
-    poke(page, 0x38, 0x1000000); // HW_AUDIOOUT_DACVOLUME MUTE_LEFt = 0
+    poke(page, 0x38, 0x1000000); // HW_AUDIOOUT_DACVOLUME MUTE_LEFT = 0
     poke(page, 0x58, 0x1007F7F); // HW_AUDIOOUT_HPVOL VOL_LEFT, VOL_RIGHT, MUTE = 0
     poke(page, 0x54, 0x087F); // HW_AUDIOOUT_HPVOL VOL_RIGHT = 0x7F, VOL_LEFT = 0x8
     poke(page, 0x84, 0x1074); // HW_AUDIOOUT_REFCTRL DAC_ADJ = 0x4, VAG_VAL = 0x7, ADJ_VAG = 0x1
@@ -67,7 +67,6 @@ pub fn init(fd: i32) -> IoResult<()> {
     unsafe { DAC_POINTER.set(mmaped).unwrap() }
 
     set_ready_flag(peek(mmaped, DAC_STATE_OFFSET) ^ 2);
-
 
     Ok(())
 }
@@ -99,6 +98,6 @@ pub fn set(value: u16) {
 
         set_ready_flag(state)
     } else {
-        println!("warning: no DAC page pointer found");
+        println!("warning: no DAC page pointer found")
     }
 }

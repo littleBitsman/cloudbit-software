@@ -155,7 +155,7 @@ async fn main() {
     // - https (converted to wss),
     // - ws or wss
     // If it is not any of those, the error is logged and the DEFAULT_URL is used.
-    // (The Url implementation returns an error if the URL is  cannot-be-a-base
+    // (The Url implementation returns an error if the URL is cannot-be-a-base
     //  OR its scheme is not http, https, ws, or wss)
     match url.scheme() {
         "http" => url.set_scheme("ws").unwrap(),

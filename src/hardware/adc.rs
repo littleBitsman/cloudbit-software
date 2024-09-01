@@ -33,7 +33,7 @@ fn get() -> Option<*mut u32> {
 
 /// Initalizes ADC memory
 fn mem_init(page: *mut u32) {
-    poke(page, 0x0008, 0x40000000); // clear CLKGATE 
+    poke(page, 0x0008, 0x40000000); // clear CLKGATE
     poke(page, 0x0004, 0x00000001); // schedule channel 0 for conversion
     poke(page, 0x0028, 0x07008000); // clear DIVIDE_BY_TWO for channels 0-2 and TEMPSENSE_PWD
     poke(page, 0x0014, 0x00070000); // enable interrupts for conversions on channels 0-2
@@ -80,7 +80,7 @@ pub fn read() -> u16 {
         let mut value = peek(pointer, ADC_VALUE_OFFSET) & 0xFFF;
         poke(pointer, ADC_CLEAR_OFFSET, 0x1); // clears the LRADC0_IRQ bit in HW_LRADC_CTRL1
         value = ((value.clamp(200, 1700) - 200) * 0xFFFF) / 1500;
-        
+
         // That comment is still a lie
         // I still have to clamp it lol
         value.clamp(u8::MIN as u32, u8::MAX as u32) as u16
