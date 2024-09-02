@@ -23,6 +23,9 @@ url = "2.5.2"
 name = "cloud_client"
 path = "src/main.rs"
 
+# We really goin' for performance here!!
 [profile.release]
+opt-level = 3
 strip = "symbols"
 lto = "fat"
+codegen-units = 1
