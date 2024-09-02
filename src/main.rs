@@ -42,7 +42,7 @@ use std::{
     io::ErrorKind as IoErrorKind,
     panic::set_hook as set_panic_hook,
     process::id as get_pid,
-    time::Duration
+    time::Duration,
 };
 use sysinfo::{ProcessesToUpdate, System};
 use tokio::{spawn, time::sleep};
@@ -50,8 +50,8 @@ use tokio_tungstenite::{
     connect_async,
     tungstenite::{
         handshake::client::{generate_key, Request},
-        Error as WebSocketError, Message
-    }
+        Error as WebSocketError, Message,
+    },
 };
 use url::Url;
 
@@ -148,7 +148,10 @@ async fn main() {
     let mut url = read_to_string("/usr/local/lb/cloud_client/server_url")
         .unwrap_or(DEFAULT_URL.to_string())
         .parse()
-        .unwrap_or(default_url.clone());
+        .unwrap_or_else(|err| {
+            eprintln!("Error while parsing URL: {err}; falling back to default URL");
+            default_url.clone()
+        });
 
     // The scheme must be any of these:
     // - http (converted to ws),
@@ -170,7 +173,7 @@ async fn main() {
     eprintln!(
         "Attempting to connect to {} ({})",
         url,
-        url.host_str().unwrap()
+        url.host_str().unwrap_or("?")
     );
 
     // initialize variables
@@ -187,12 +190,14 @@ async fn main() {
         .body(())
         .unwrap();
 
+    drop(url);
+
     let client = loop {
         led::set(LEDCommand::Teal);
         led::set(LEDCommand::Blink);
         // I wanted to avoid using Clone here but oh well
         if let Ok((client, _)) = connect_async(request.clone()).await {
-            break client
+            break client;
         } else {
             led::set(LEDCommand::Red);
             led::set(LEDCommand::Blink);
@@ -200,13 +205,15 @@ async fn main() {
         }
     };
 
+    drop(request);
+
     // tx: sender used internally, this is done so because tx is not Clone
     // receiver: receiver from the socket, only 1 copy is needed since its managed by 1 thread only
     let (mut tx, mut receiver) = client.split();
 
     // sender: sends to rx to be processed to be sent through the WebSocket
     // rx: receives all messages that need to be sent through the WebSocket via tx
-    let (mut sender, mut rx) = channel::<Message>(16);
+    let (mut sender, mut rx) = channel(16);
     let mut sender2 = sender.clone(); // 2 threads are running, each needs their own copy
 
     eprintln!("Successfully connected");
@@ -244,8 +251,8 @@ async fn main() {
                         }
                         _ => {}
                     },
-                    e => eprintln!("error on WebSocket: {e}")
-                }
+                    e => eprintln!("error on WebSocket: {e}"),
+                },
             }
         }
     });
@@ -290,7 +297,8 @@ async fn main() {
                                         let mut chain = Vec::new();
 
                                         for item in command.split(" ") {
-                                            if let Ok(cmd) = LEDCommand::try_from(item.trim().to_string())
+                                            if let Ok(cmd) =
+                                                LEDCommand::try_from(item.trim().to_string())
                                             {
                                                 chain.push(cmd)
                                             }
@@ -372,8 +380,8 @@ async fn main() {
                         }
                         _ => {}
                     },
-                    e => eprintln!("error on WebSocket: {e}")
-                }
+                    e => eprintln!("error on WebSocket: {e}"),
+                },
             }
         }
     });
