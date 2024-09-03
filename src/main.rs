@@ -41,8 +41,8 @@ use std::{
     fs::read_to_string,
     io::ErrorKind as IoErrorKind,
     panic::set_hook as set_panic_hook,
-    process::{Command, id as get_pid},
-    time::Duration
+    process::id as get_pid,
+    time::Duration,
 };
 use sysinfo::{ProcessesToUpdate, System};
 use tokio::{spawn, time::sleep};
@@ -50,8 +50,8 @@ use tokio_tungstenite::{
     connect_async,
     tungstenite::{
         handshake::client::{generate_key, Request},
-        Error as WebSocketError, Message
-    }
+        Error as WebSocketError, Message,
+    },
 };
 use url::Url;
 
@@ -128,21 +128,6 @@ mod hardware;
 
 use hardware::*;
 
-/// set output (as 0x0000 - 0xFFFF)
-/// returns success as a boolean
-///
-/// This does NOT have a memory-based wrapper due to the complexity of the DAC.
-/// You should NEVER be calling this in very rapid succession (meaning,
-/// many, many times per second for long periods of time, doing this for
-/// <2 seconds at a time with long-ish breaks should be safe)
-fn set_output(value: u16) -> bool {
-    Command::new("/usr/local/lb/DAC/bin/setDAC")
-        .arg(format!("{value:04x}"))
-        .status()
-        .expect("failed to execute /usr/local/lb/DAC/bin/setDAC")
-        .success()
-}
-
 // MAIN LOOP
 #[tokio::main]
 async fn main() {
@@ -163,14 +148,17 @@ async fn main() {
     let mut url = read_to_string("/usr/local/lb/cloud_client/server_url")
         .unwrap_or(DEFAULT_URL.to_string())
         .parse()
-        .unwrap_or(default_url.clone());
+        .unwrap_or_else(|err| {
+            eprintln!("Error while parsing URL: {err}; falling back to default URL");
+            default_url.clone()
+        });
 
     // The scheme must be any of these:
     // - http (converted to ws),
     // - https (converted to wss),
     // - ws or wss
     // If it is not any of those, the error is logged and the DEFAULT_URL is used.
-    // (The Url implementation returns an error if the URL is  cannot-be-a-base
+    // (The Url implementation returns an error if the URL is cannot-be-a-base
     //  OR its scheme is not http, https, ws, or wss)
     match url.scheme() {
         "http" => url.set_scheme("ws").unwrap(),
@@ -185,7 +173,7 @@ async fn main() {
     eprintln!(
         "Attempting to connect to {} ({})",
         url,
-        url.host_str().unwrap()
+        url.host_str().unwrap_or("?")
     );
 
     // initialize variables
@@ -202,12 +190,14 @@ async fn main() {
         .body(())
         .unwrap();
 
+    drop(url);
+
     let client = loop {
         led::set(LEDCommand::Teal);
         led::set(LEDCommand::Blink);
         // I wanted to avoid using Clone here but oh well
         if let Ok((client, _)) = connect_async(request.clone()).await {
-            break client
+            break client;
         } else {
             led::set(LEDCommand::Red);
             led::set(LEDCommand::Blink);
@@ -215,13 +205,15 @@ async fn main() {
         }
     };
 
+    drop(request);
+
     // tx: sender used internally, this is done so because tx is not Clone
     // receiver: receiver from the socket, only 1 copy is needed since its managed by 1 thread only
     let (mut tx, mut receiver) = client.split();
 
     // sender: sends to rx to be processed to be sent through the WebSocket
     // rx: receives all messages that need to be sent through the WebSocket via tx
-    let (mut sender, mut rx) = channel::<Message>(16);
+    let (mut sender, mut rx) = channel(16);
     let mut sender2 = sender.clone(); // 2 threads are running, each needs their own copy
 
     eprintln!("Successfully connected");
@@ -259,8 +251,8 @@ async fn main() {
                         }
                         _ => {}
                     },
-                    e => eprintln!("error on WebSocket: {e}")
-                }
+                    e => eprintln!("error on WebSocket: {e}"),
+                },
             }
         }
     });
@@ -288,7 +280,7 @@ async fn main() {
                                 Some(0x2) => {
                                     // OUTPUT
                                     if let Some(new) = obj["data"]["value"].as_u64() {
-                                        set_output(new as u16);
+                                        dac::set(new as u16);
                                     } else {
                                         eprintln!("bad output packet: {}", to_string(&obj).unwrap())
                                     }
@@ -305,7 +297,8 @@ async fn main() {
                                         let mut chain = Vec::new();
 
                                         for item in command.split(" ") {
-                                            if let Ok(cmd) = LEDCommand::try_from(item.trim().to_string())
+                                            if let Ok(cmd) =
+                                                LEDCommand::try_from(item.trim().to_string())
                                             {
                                                 chain.push(cmd)
                                             }
@@ -387,8 +380,8 @@ async fn main() {
                         }
                         _ => {}
                     },
-                    e => eprintln!("error on WebSocket: {e}")
-                }
+                    e => eprintln!("error on WebSocket: {e}"),
+                },
             }
         }
     });

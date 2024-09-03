@@ -11,18 +11,21 @@ exclude = ["/.cargo/*", "/.github/*", "/.gitignore", "/files/*", "/testServer/*"
 
 [dependencies]
 futures = "0.3.30"
-libc = "0.2.158"
+libc = { version = "0.2.158", default-features = false }
 mac_address = "1.1.7"
 sysinfo = { version = "0.31.3", default-features = false, features = ["system"] }
-serde_json = "1.0.125"
-tokio = { version = "1.39.3", features = ["rt", "macros", "rt-multi-thread", "time"] }
-tokio-tungstenite = { version = "0.23.1", features = ["rustls-tls-webpki-roots", "tokio-rustls"] }
+serde_json = "1.0.25"
+tokio = { version = "1.39.3", features = ["rt", "rt-multi-thread", "macros", "time"] }
+tokio-tungstenite = { version = "0.23.1", features = ["rustls-tls-webpki-roots"] }
 url = "2.5.2"
 
 [[bin]]
 name = "cloud_client"
 path = "src/main.rs"
 
+# We really goin' for performance here!!
 [profile.release]
-strip = "debuginfo"
-lto = "thin"
+opt-level = 3
+strip = "symbols"
+lto = "fat"
+codegen-units = 1

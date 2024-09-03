@@ -20,11 +20,12 @@
 use std::{
     fs::OpenOptions,
     io::Error as IoError,
-    os::{fd::AsRawFd, unix::fs::OpenOptionsExt},
+    os::{fd::AsRawFd, unix::fs::OpenOptionsExt}
 };
 
 pub mod adc;
 pub mod button;
+pub mod dac;
 pub mod led;
 
 pub fn init_all() -> Result<(), (&'static str, IoError)> {
@@ -39,6 +40,8 @@ pub fn init_all() -> Result<(), (&'static str, IoError)> {
 
     adc::init(fd).map_err(|v| ("ADC", v))?;
     button::init(fd).map_err(|v| ("Button", v))?;
+    dac::init(fd).map_err(|v| ("DAC", v))?;
+    led::init(fd).map_err(|v| ("DAC", v))?;
 
     Ok(())
 }
@@ -58,6 +61,11 @@ mod mem {
 
     /// Reads memory at (page + offset) with [`std::ptr::read_volatile`].
     ///
+    /// The equivalent of this function in C is as follows:
+    /// ```c
+    /// uint32_t value = *(volatile uint32_t *)(base_address + offset);
+    /// ```
+    ///
     /// This function is not marked as `unsafe` to avoid requiring `unsafe` blocks
     /// every time it is used. However, it does involve `unsafe` operations internally.
     ///
@@ -75,6 +83,11 @@ mod mem {
     }
 
     /// Sets memory at (page + offset) with [`std::ptr::write_volatile`].
+    ///
+    /// The C counterpart to this function is as follows:
+    /// ```c
+    /// *(volatile uint32_t *)(base_address + offset) = value;
+    /// ```
     ///
     /// This function is not marked as `unsafe` to avoid requiring `unsafe` blocks
     /// every time it is used. However, it does involve `unsafe` operations internally.
