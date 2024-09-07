@@ -20,7 +20,7 @@
 use std::{
     fs::OpenOptions,
     io::Error as IoError,
-    os::{fd::AsRawFd, unix::fs::OpenOptionsExt}
+    os::{fd::AsRawFd, unix::fs::OpenOptionsExt},
 };
 
 pub mod adc;
@@ -54,7 +54,7 @@ mod mem {
     use libc::{mmap, MAP_FAILED, MAP_SHARED, PROT_READ, PROT_WRITE};
     use std::{
         io::{Error as IoError, Result as IoResult},
-        ptr::null_mut
+        ptr::null_mut,
     };
 
     pub const MAP_SIZE: usize = 0x1FFF;
