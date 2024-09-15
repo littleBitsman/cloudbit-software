@@ -106,10 +106,13 @@ mod mem {
     }
 
     /// Maps a file (defined by the file descriptor `fd`) into memory,
-    /// at offset `offset`.
+    /// at offset `offset`, with size [`MAP_SIZE`] (equal to 0x1FFF or 8191).
     ///
     /// This function is not marked as `unsafe` to avoid requiring `unsafe` blocks
     /// every time it is used. However, it does involve `unsafe` operations internally.
+    /// 
+    /// This is *guaranteed* to return an error if the file the file descriptor
+    /// points to is dropped/closed.
     ///
     /// # Safety
     /// The `offset` must be aligned and within the bounds of the file defined
@@ -125,10 +128,10 @@ mod mem {
                 PROT_READ | PROT_WRITE,
                 MAP_SHARED,
                 fd,
-                offset,
+                offset
             )
         };
-
+        
         if ptr == MAP_FAILED {
             Err(IoError::last_os_error())
         } else {
