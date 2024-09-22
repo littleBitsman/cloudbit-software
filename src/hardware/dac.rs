@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see https://www.gnu.org/licenses/.
 
-//! ADC wrapper
+//! DAC wrapper
 
 use crate::hardware::mem::{map, peek, poke};
 use std::{
@@ -78,7 +78,7 @@ fn set_ready_flag(v: u32) {
     LAST_DAC_READY_FLAG.store(v, SeqCst)
 }
 
-/// Set output.
+/// Set output
 pub fn set(value: u16) {
     if let Some(ptr) = get() {
         let converted = (value ^ 0x8000) as u32;
@@ -90,7 +90,6 @@ pub fn set(value: u16) {
         for _ in 0..20 {
             curr_state = peek(ptr, DAC_STATE_OFFSET);
             if ((curr_state ^ state) & 2) != 0 {
-                // Write to the memory-mapped register
                 poke(ptr, DAC_VALUE_OFFSET, packed);
                 state = curr_state;
             }

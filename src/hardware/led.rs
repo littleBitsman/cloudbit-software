@@ -16,13 +16,6 @@
 // along with this program. If not, see https://www.gnu.org/licenses/.
 
 //! LED wrapper
-//!
-//! Note that this does NOT use memory mapping and volatile reads/writes,
-//! rather it uses the littleBits-provided commands
-//! (specifically `/usr/local/lb/LEDcolor/bin/setColor`) mainly due to the
-//! fact that LED commands are not used often (unless there is a bad config).
-//!
-//! (also blink would suck to make xd)
 
 use crate::{
     hardware::mem::{map, poke},
@@ -92,7 +85,7 @@ pub fn init(fd: i32) -> IoResult<()> {
                 },
                 Err(ty) => {
                     if ty == TryRecvError::Disconnected {
-                        break;
+                        panic!("cloudbit-software exited, LED thread is now exiting")
                     }
                 }
             }
