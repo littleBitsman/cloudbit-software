@@ -92,7 +92,7 @@ These are opcodes that are available for use for any devs wanting to customize t
             }
         }
         ```
-- `0xF3` requests that the cloudBit sends its current system stats (currently sends CPU usage as a percent, memory usage as a percent and in bytes, and total memory in the system in bytes). No fields are required other than the opcode itself.
+- `0xF3` requests that the cloudBit sends its current system stats (currently sends CPU usage as a percent, memory usage as a percent and in bytes, total memory in the system in bytes, and CPU die temperature in degrees Celsius). No fields are required other than the opcode itself.
     - `0xF4` is the return opcode (contains the statistics)
         - An example packet *could* look like this (note that `0xF4` is not what the opcode would look like in JSON)
         ```js
@@ -102,7 +102,8 @@ These are opcodes that are available for use for any devs wanting to customize t
                 "cpu_usage": 10.6,
                 "memory_usage": 5776,
                 "memory_usage_percent": 10,
-                "total_memory": 57760
+                "total_memory": 57760,
+                "cpu_temp": 30
             }
         }
         ```

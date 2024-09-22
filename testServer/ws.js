@@ -34,7 +34,7 @@ server.on('connection', (c, r) => {
                 console.log(`- MEMORY USED: ${bytes.format(stats.memory_usage)}`)
                 console.log(`- TOTAL MEMORY: ${bytes.format(stats.total_memory)}`)
                 console.log(`- MEMORY USED (%): ${stats.memory_usage_percent}%`)
-                console.log(`- CPU TEMP (K): ${stats.cpu_temp_kelvin}`)
+                console.log(`- CPU TEMP (C): ${stats.cpu_temp}`)
             } else {
                 console.log(`invalid opcode; packet: ${d.toString('utf8')}`)
             }
