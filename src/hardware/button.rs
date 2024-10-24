@@ -18,15 +18,20 @@
 //! Button wrapper
 
 use crate::hardware::mem::{map, peek};
-use std::{io::Result as IoResult, sync::OnceLock};
+use std::{io::Result as IoResult, ptr::null_mut, sync::atomic::{AtomicPtr, Ordering::SeqCst}};
 
 const GPIO_PAGE: usize = 0x80018000;
 const BUTTON_OFFSET: usize = 0x0610;
 
-static mut GPIO_POINTER: OnceLock<*mut u32> = OnceLock::new();
+static GPIO_POINTER: AtomicPtr<u32> = AtomicPtr::new(null_mut());
 
 fn get() -> Option<*mut u32> {
-    unsafe { GPIO_POINTER.get().copied() }
+    let ptr = GPIO_POINTER.load(SeqCst);
+    if ptr.is_null() {
+        None
+    } else {
+        Some(ptr)
+    }
 }
 
 /// Initalizes button memory
@@ -44,7 +49,7 @@ pub fn init(fd: i32) -> IoResult<()> {
 
     let mmaped = map(fd, GPIO_PAGE as i64)?;
     mem_init(mmaped);
-    unsafe { GPIO_POINTER.set(mmaped).unwrap() }
+    GPIO_POINTER.store(mmaped, SeqCst);
 
     Ok(())
 }

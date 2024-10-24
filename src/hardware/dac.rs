@@ -20,10 +20,8 @@
 use crate::hardware::mem::{map, peek, poke};
 use std::{
     io::Result as IoResult,
-    sync::{
-        atomic::{AtomicU32, Ordering::SeqCst},
-        OnceLock,
-    },
+    ptr::null_mut,
+    sync::atomic::{AtomicU32, AtomicPtr, Ordering::SeqCst},
 };
 
 pub const DAC_PAGE: usize = 0x80048000;
@@ -31,10 +29,15 @@ pub const DAC_STATE_OFFSET: usize = 0x40;
 pub const DAC_VALUE_OFFSET: usize = 0xF0;
 
 static LAST_DAC_READY_FLAG: AtomicU32 = AtomicU32::new(0);
-static mut DAC_POINTER: OnceLock<*mut u32> = OnceLock::new();
+static DAC_POINTER: AtomicPtr<u32> = AtomicPtr::new(null_mut());
 
 fn get() -> Option<*mut u32> {
-    unsafe { DAC_POINTER.get().copied() }
+    let ptr = DAC_POINTER.load(SeqCst);
+    if ptr.is_null() {
+        None
+    } else {
+        Some(ptr)
+    }
 }
 
 /// Initalizes DAC memory
@@ -64,7 +67,7 @@ pub fn init(fd: i32) -> IoResult<()> {
 
     let mmaped = map(fd, DAC_PAGE as i64)?;
     mem_init(mmaped);
-    unsafe { DAC_POINTER.set(mmaped).unwrap() }
+    DAC_POINTER.store(mmaped, SeqCst);
 
     set_ready_flag(peek(mmaped, DAC_STATE_OFFSET) ^ 2);
 

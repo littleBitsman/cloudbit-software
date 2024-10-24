@@ -24,7 +24,9 @@ use crate::{
 use std::{
     io::Result as IoResult,
     process::Command,
+    ptr::null_mut,
     sync::{
+        atomic::{AtomicPtr, Ordering::SeqCst},
         mpsc::{channel, Sender, TryRecvError},
         OnceLock,
     },
@@ -36,10 +38,15 @@ const GPIO_PAGE: usize = 0x80018000;
 const SLEEP_DUR: Duration = Duration::from_millis(500);
 
 static LED_CMD_SENDER: OnceLock<Sender<LEDCommand>> = OnceLock::new();
-static mut GPIO_POINTER: OnceLock<*mut u32> = OnceLock::new();
+static GPIO_POINTER: AtomicPtr<u32> = AtomicPtr::new(null_mut());
 
 fn get() -> Option<*mut u32> {
-    unsafe { GPIO_POINTER.get().copied() }
+    let ptr = GPIO_POINTER.load(SeqCst);
+    if ptr.is_null() {
+        None
+    } else {
+        Some(ptr)
+    }
 }
 
 fn mem_init(page: *mut u32) {
@@ -63,7 +70,7 @@ pub fn init(fd: i32) -> IoResult<()> {
 
     let mmaped = map(fd, GPIO_PAGE as i64)?;
     mem_init(mmaped);
-    unsafe { GPIO_POINTER.set(mmaped).unwrap() }
+    GPIO_POINTER.store(mmaped, SeqCst);
 
     let (send, recv) = channel();
     LED_CMD_SENDER.set(send).unwrap();
