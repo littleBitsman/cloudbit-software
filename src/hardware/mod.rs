@@ -110,7 +110,7 @@ mod mem {
     ///
     /// This function is not marked as `unsafe` to avoid requiring `unsafe` blocks
     /// every time it is used. However, it does involve `unsafe` operations internally.
-    /// 
+    ///
     /// This is *guaranteed* to return an error if the file the file descriptor
     /// points to is dropped/closed.
     ///
@@ -128,7 +128,7 @@ mod mem {
                 PROT_READ | PROT_WRITE,
                 MAP_SHARED,
                 fd,
-                offset
+                offset,
             )
         };
         

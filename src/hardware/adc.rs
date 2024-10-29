@@ -65,7 +65,7 @@ pub fn init(fd: i32) -> IoResult<()> {
 }
 
 /// Reads the ADC (also known as the *LR*ADC, or ***L***ow-***R***esolution **A**nalog to **D**igital **C**onverter)
-pub fn read() -> u16 {
+pub fn read() -> u8 {
     if let Some(pointer) = get() {
         poke(pointer, ADC_SCHED_OFFSET, 0x1);
 
@@ -88,7 +88,7 @@ pub fn read() -> u16 {
 
         // That comment is still a lie
         // I still have to clamp it lol
-        value.clamp(u8::MIN as u32, u8::MAX as u32) as u16
+        value.clamp(u8::MIN as u32, u8::MAX as u32) as u8
     } else {
         println!("warning: no ADC page pointer found");
         0

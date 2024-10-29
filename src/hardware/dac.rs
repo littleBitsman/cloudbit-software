@@ -78,7 +78,7 @@ fn get_ready_flag() -> u32 {
     LAST_DAC_READY_FLAG.load(SeqCst)
 }
 fn set_ready_flag(v: u32) {
-    LAST_DAC_READY_FLAG.store(v, SeqCst)
+    LAST_DAC_READY_FLAG.store(v, SeqCst);
 }
 
 /// Set output
@@ -98,8 +98,8 @@ pub fn set(value: u16) {
             }
         }
 
-        set_ready_flag(state)
+        set_ready_flag(state);
     } else {
-        println!("warning: no DAC page pointer found")
+        println!("warning: no DAC page pointer found");
     }
 }

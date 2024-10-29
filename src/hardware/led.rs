@@ -90,11 +90,7 @@ pub fn init(fd: i32) -> IoResult<()> {
                         color = msg;
                     }
                 },
-                Err(ty) => {
-                    if ty == TryRecvError::Disconnected {
-                        panic!("cloudbit-software exited, LED thread is now exiting")
-                    }
-                }
+                Err(ty) => assert!(ty != TryRecvError::Disconnected, "cloudbit-software exited, LED thread is now exiting")
             }
             let prev_on = is_on;
             is_on = match state {
@@ -116,6 +112,7 @@ pub fn init(fd: i32) -> IoResult<()> {
                         LEDCommand::Teal => 0b011,
                         LEDCommand::Yellow => 0b110,
                         LEDCommand::White => 0b111,
+                        // Intentional since this is separate from White
                         LEDCommand::Clownbarf => 0b111,
                         _ => unreachable!(),
                     };
@@ -155,7 +152,7 @@ pub fn init(fd: i32) -> IoResult<()> {
                 poke(ptr, 0x0514, 0x10000000);
             }
 
-            sleep(SLEEP_DUR)
+            sleep(SLEEP_DUR);
         }
     });
     Ok(())
