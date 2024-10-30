@@ -18,17 +18,22 @@
 //! ADC wrapper
 
 use crate::hardware::mem::{map, peek, poke};
-use std::{io::Result as IoResult, sync::OnceLock};
+use std::{io::Result as IoResult, ptr::null_mut, sync::atomic::{AtomicPtr, Ordering::SeqCst}};
 
 pub const ADC_PAGE: usize = 0x80050000;
 pub const ADC_SCHED_OFFSET: usize = 0x0004;
 pub const ADC_VALUE_OFFSET: usize = 0x0050;
 pub const ADC_CLEAR_OFFSET: usize = 0x0018;
 
-static mut ADC_POINTER: OnceLock<*mut u32> = OnceLock::new();
+static ADC_POINTER: AtomicPtr<u32> = AtomicPtr::new(null_mut());
 
 fn get() -> Option<*mut u32> {
-    unsafe { ADC_POINTER.get().copied() }
+    let ptr = ADC_POINTER.load(SeqCst);
+    if ptr.is_null() {
+        None
+    } else {
+        Some(ptr)
+    }
 }
 
 /// Initalizes ADC memory
@@ -54,13 +59,13 @@ pub fn init(fd: i32) -> IoResult<()> {
 
     let mmaped = map(fd, ADC_PAGE as i64)?;
     mem_init(mmaped);
-    unsafe { ADC_POINTER.set(mmaped).unwrap() }
+    ADC_POINTER.store(mmaped, SeqCst);
 
     Ok(())
 }
 
 /// Reads the ADC (also known as the *LR*ADC, or ***L***ow-***R***esolution **A**nalog to **D**igital **C**onverter)
-pub fn read() -> u16 {
+pub fn read() -> u8 {
     if let Some(pointer) = get() {
         poke(pointer, ADC_SCHED_OFFSET, 0x1);
 
@@ -83,7 +88,7 @@ pub fn read() -> u16 {
 
         // That comment is still a lie
         // I still have to clamp it lol
-        value.clamp(u8::MIN as u32, u8::MAX as u32) as u16
+        value.clamp(u8::MIN as u32, u8::MAX as u32) as u8
     } else {
         println!("warning: no ADC page pointer found");
         0

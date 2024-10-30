@@ -31,7 +31,7 @@ const LOOP_DELAY_MS: u64 = 10;
 /// The minimum amount that the input ADC value must change
 /// before the value is considered "different" (this is an
 /// attempt to reduce the effects of noise from the ADC).
-const INPUT_DELTA_THRESHOLD: u16 = 2;
+const INPUT_DELTA_THRESHOLD: u8 = 2;
 
 use futures::{channel::mpsc::channel, SinkExt, StreamExt};
 use mac_address::get_mac_address;
@@ -166,7 +166,7 @@ async fn main() {
         "ws" | "wss" => {}
         a => {
             eprintln!("Invalid scheme {a} on cloudbit server URL, falling back to default server");
-            url = default_url
+            url = default_url;
         }
     }
 
@@ -177,7 +177,7 @@ async fn main() {
     );
 
     // initialize variables
-    let mut current_input: u16 = 0; // current input (0 should be the starting value on any server implementations)
+    let mut current_input: u8 = 0; // current input (0 should be the starting value on any server implementations)
     let request = Request::get(url.as_str())
         .header("MAC-Address", mac_address.to_string())
         .header("CB-Id", cb_id)
@@ -198,11 +198,10 @@ async fn main() {
         // I wanted to avoid using Clone here but oh well
         if let Ok((client, _)) = connect_async(request.clone()).await {
             break client;
-        } else {
-            led::set(LEDCommand::Red);
-            led::set(LEDCommand::Blink);
-            sleep(Duration::from_secs(2)).await
         }
+        led::set(LEDCommand::Red);
+        led::set(LEDCommand::Blink);
+        sleep(Duration::from_secs(2)).await;
     };
 
     drop(request);
@@ -281,7 +280,7 @@ async fn main() {
                                 if let Some(new) = obj["data"]["value"].as_u64() {
                                     dac::set(new as u16);
                                 } else {
-                                    eprintln!("bad output packet: {}", to_string(&obj).unwrap())
+                                    eprintln!("bad output packet: {}", json_str!(obj));
                                 }
                             }
 
@@ -291,20 +290,20 @@ async fn main() {
                             // Set LED
                             Some(0xF0) => {
                                 if let Some(command) = obj["led_command"].as_str() {
-                                    let command = command.replace(",", " ");
+                                    let command = command.replace(',', " ");
 
                                     let mut chain = Vec::new();
 
-                                    for item in command.split(" ") {
+                                    for item in command.split(' ') {
                                         if let Ok(cmd) =
                                             LEDCommand::try_from(item.trim().to_string())
                                         {
-                                            chain.push(cmd)
+                                            chain.push(cmd);
                                         }
                                     }
                                     led::set_many(chain);
                                 } else {
-                                    eprintln!("bad set LED packet: {}", json_str!(obj))
+                                    eprintln!("bad set LED packet: {}", json_str!(obj));
                                 }
                             }
 
@@ -363,7 +362,7 @@ async fn main() {
                             None => {}
                         }
                     } else {
-                        eprintln!("bad packet from server: {data}")
+                        eprintln!("bad packet from server: {data}");
                     }
                 }
                 Ok(_) => eprintln!("unknown content"),
@@ -411,6 +410,6 @@ async fn main() {
                 .await
                 .unwrap();
         }
-        sleep(Duration::from_millis(LOOP_DELAY_MS)).await
+        sleep(Duration::from_millis(LOOP_DELAY_MS)).await;
     }
 }
